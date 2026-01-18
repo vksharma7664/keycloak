@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response.Status;
 
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.BearerAuthFilter;
+import org.keycloak.admin.client.resource.WorkflowResource;
 import org.keycloak.admin.client.resource.WorkflowsResource;
 import org.keycloak.models.workflow.DeleteUserStepProviderFactory;
 import org.keycloak.models.workflow.DisableUserStepProviderFactory;
@@ -42,6 +43,7 @@ import org.keycloak.models.workflow.WorkflowStateProvider.ScheduledStep;
 import org.keycloak.models.workflow.conditions.IdentityProviderWorkflowConditionFactory;
 import org.keycloak.models.workflow.conditions.RoleWorkflowConditionFactory;
 import org.keycloak.representations.idm.ErrorRepresentation;
+import org.keycloak.representations.workflows.StepExecutionStatus;
 import org.keycloak.representations.workflows.WorkflowRepresentation;
 import org.keycloak.representations.workflows.WorkflowStepRepresentation;
 import org.keycloak.testframework.annotations.InjectAdminClient;
@@ -66,6 +68,7 @@ import com.fasterxml.jackson.jakarta.rs.yaml.JacksonYAMLProvider;
 import com.fasterxml.jackson.jakarta.rs.yaml.YAMLMediaTypes;
 import org.junit.jupiter.api.Test;
 
+import static org.keycloak.models.workflow.ResourceOperationType.USER_AUTHENTICATED;
 import static org.keycloak.models.workflow.ResourceOperationType.USER_CREATED;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -238,6 +241,33 @@ public class WorkflowManagementTest extends AbstractWorkflowTest {
             assertThat(response.getStatus(), is(Response.Status.BAD_REQUEST.getStatusCode()));
             assertThat(response.readEntity(ErrorRepresentation.class).getErrorMessage(), equalTo("Step 'after' configuration cannot be negative."));
         }
+    }
+
+    @Test
+    public void testFailCreateWorkflowWithDuplicateName() {
+        // create first workflow
+        managedRealm.admin().workflows().create(WorkflowRepresentation.withName("myworkflow")
+                .onEvent(USER_CREATED.name())
+                .withSteps(
+                        WorkflowStepRepresentation.create().of(SetUserAttributeStepProviderFactory.ID)
+                                .after(Duration.ofDays(5))
+                                .withConfig("key", "value")
+                                .build())
+                .build()).close();
+
+        // try to create second workflow with same name
+        try (Response response = managedRealm.admin().workflows().create(WorkflowRepresentation.withName("myworkflow")
+                .onEvent(USER_AUTHENTICATED.name())
+                .withSteps(
+                        WorkflowStepRepresentation.create().of(DisableUserStepProviderFactory.ID)
+                                .after(Duration.ofDays(10))
+                                .build())
+                .build())) {
+            assertThat(response.getStatus(), is(Response.Status.BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(ErrorRepresentation.class).getErrorMessage(),
+                    equalTo("Workflow name must be unique. A workflow with name 'myworkflow' already exists."));
+        }
+
     }
 
     @Test
@@ -450,6 +480,32 @@ public class WorkflowManagementTest extends AbstractWorkflowTest {
     }
 
     @Test
+    public void testUpdateWorkflowNoIdInRepresentation() {
+        WorkflowRepresentation expectedWorkflows = WorkflowRepresentation.withName("test-workflow")
+                .withSteps(
+                        WorkflowStepRepresentation.create().of(DisableUserStepProviderFactory.ID)
+                                .after(Duration.ofDays(5))
+                                .build()
+                ).build();
+
+        WorkflowsResource workflows = managedRealm.admin().workflows();
+
+        String workflowId;
+        try (Response response = workflows.create(expectedWorkflows)) {
+            assertThat(response.getStatus(), is(Response.Status.CREATED.getStatusCode()));
+            workflowId = ApiUtil.getCreatedId(response);
+        }
+
+        WorkflowResource workflow = managedRealm.admin().workflows().workflow(workflowId);
+        WorkflowRepresentation rep = workflow.toRepresentation();
+        rep.setId(null);
+        rep.setConditions(RoleWorkflowConditionFactory.ID + "(realm-management/realm-admin)");
+        try (Response response = workflow.update(rep)) {
+            assertThat(response.getStatus(), is(Status.NO_CONTENT.getStatusCode()));
+        }
+    }
+
+    @Test
     public void testSearch() {
         // create a few workflows with different names
         String[] workflowNames = {"alpha-workflow", "beta-workflow", "gamma-workflow", "delta-workflow"};
@@ -497,18 +553,19 @@ public class WorkflowManagementTest extends AbstractWorkflowTest {
 
             String workflowId;
             try (Response response =
-            managedRealm.admin().workflows().create(WorkflowRepresentation.withName(name)
-                    .withSteps(
-                            WorkflowStepRepresentation.create().of(NotifyUserStepProviderFactory.ID)
-                                    .after(Duration.ofDays(5))
-                                    .build(),
-                            WorkflowStepRepresentation.create().of(SetUserAttributeStepProviderFactory.ID)
-                                    .withConfig("key", "value")
-                                    .build(),
-                            WorkflowStepRepresentation.create().of(DisableUserStepProviderFactory.ID)
-                                    .after(Duration.ofDays(15))
-                                    .build()
-                    ).build())) {
+                         managedRealm.admin().workflows().create(WorkflowRepresentation.withName(name)
+                                 .withSteps(
+                                         WorkflowStepRepresentation.create().of(SetUserAttributeStepProviderFactory.ID)
+                                                 .withConfig("key", "value")
+                                                 .after(Duration.ofDays(5))
+                                                 .build(),
+                                         WorkflowStepRepresentation.create().of(SetUserAttributeStepProviderFactory.ID)
+                                                 .withConfig("another-key", "another-value")
+                                                 .build(),
+                                         WorkflowStepRepresentation.create().of(DisableUserStepProviderFactory.ID)
+                                                 .after(Duration.ofDays(15))
+                                                 .build()
+                                 ).build())) {
                 workflowId = ApiUtil.getCreatedId(response);
             }
 
@@ -535,6 +592,23 @@ public class WorkflowManagementTest extends AbstractWorkflowTest {
             // it should be precisely 15 days after the second step
             long expectedThirdStepScheduledAt = workflow.getSteps().get(1).getScheduledAt() + Duration.ofDays(15).toMillis();
             assertThat(workflow.getSteps().get(2).getScheduledAt(), is(expectedThirdStepScheduledAt));
+            // all steps should be pending execution
+            assertTrue(workflow.getSteps().stream().map(WorkflowStepRepresentation::getExecutionStatus)
+                    .allMatch(status -> status == StepExecutionStatus.PENDING));
+        }
+
+        // advance time so that the first and second steps in each workflow run
+        runScheduledSteps(Duration.ofDays(6));
+
+        // fetch the active workflows again
+        scheduledWorkflows = managedRealm.admin().workflows().getScheduledWorkflows(userAlice.getId());
+        assertThat(scheduledWorkflows, hasSize(3));
+        // now all first and second steps should be executed, while the third should be pending
+        for (WorkflowRepresentation workflow : scheduledWorkflows) {
+            assertThat(workflow.getSteps(), hasSize(3));
+            assertThat(workflow.getSteps().get(0).getExecutionStatus(), is(StepExecutionStatus.COMPLETED));
+            assertThat(workflow.getSteps().get(1).getExecutionStatus(), is(StepExecutionStatus.COMPLETED));
+            assertThat(workflow.getSteps().get(2).getExecutionStatus(), is(StepExecutionStatus.PENDING));
         }
     }
 

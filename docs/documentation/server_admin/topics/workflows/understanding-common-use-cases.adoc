@@ -12,13 +12,13 @@ When a new user is created, a workflow can automatically send a welcome email, a
 
 ```yaml
 name: Onboarding gold members
-on: user_created
+on: user-created
 if: has-user-attribute('membership','gold')
 steps:
   - uses: notify-user
     with:
       message: "Welcome to the Gold Membership program!"
-  - uses: assign-user-role
+  - uses: grant-role
     with:
       role: gold-member
 ```
@@ -42,7 +42,10 @@ When a user has been inactive for a certain period, a workflow can send reminder
 
 ```yaml
 name: Track inactive users
-on: user_authenticated
+on: user-authenticated
+schedule:
+  after: 5s
+  batch-size: 2
 concurrency:
   restart-in-progress: true
 steps:
