@@ -1,0 +1,2 @@
+org.keycloak.authentication.authenticators.browser.IvaltAuthenticatorFactory
+org.keycloak.authentication.authenticators.browser.ConditionalIvaltAuthenticatorFactory
