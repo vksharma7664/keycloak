@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Created-By: iVALT MFA Provider
+Implementation-Title: Keycloak iVALT MFA Provider
+Implementation-Version: 1.0.0
