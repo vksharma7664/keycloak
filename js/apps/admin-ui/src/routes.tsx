@@ -10,6 +10,7 @@ import dashboardRoutes from "./dashboard/routes";
 import eventRoutes from "./events/routes";
 import groupsRoutes from "./groups/routes";
 import identityProviders from "./identity-providers/routes";
+import ivaltSettingsRoutes from "./ivalt-settings/routes";
 import organizationRoutes from "./organizations/routes";
 import pageRoutes from "./page/routes";
 import permissionsConfigurationRoute from "./permissions-configuration/routes";
@@ -45,6 +46,7 @@ export const routes: AppRouteObject[] = [
   ...clientScopesRoutes,
   ...eventRoutes,
   ...identityProviders,
+  ...ivaltSettingsRoutes,
   ...organizationRoutes,
   ...realmRoleRoutes,
   ...workflowRoutes,

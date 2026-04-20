@@ -143,6 +143,7 @@ export const PageNav = () => {
           {showConfigure && (
             <NavGroup aria-label={t("configure")} title={t("configure")}>
               <LeftNav title="realmSettings" path="/realm-settings" />
+              <LeftNav title="ivaltSettings" path="/ivalt-settings" />
               <LeftNav title="authentication" path="/authentication" />
               {isFeatureEnabled(Feature.AdminFineGrainedAuthzV2) &&
                 realmRepresentation.adminPermissionsEnabled && (
