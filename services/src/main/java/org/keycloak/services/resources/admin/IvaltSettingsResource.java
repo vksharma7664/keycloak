@@ -47,12 +47,13 @@ public class IvaltSettingsResource {
         this.session = session;
         this.realm = realm;
         
-        // Get API client configuration from realm attributes
+        // Get API client configuration from authenticator config
+        // TODO: Make this configurable through admin UI
+        // For now, use defaults from IvaltAuthenticatorFactory
         Map<String, String> config = Map.of(
-            "IVALT_KEYCLOCKIDP_API_BASE_URL", realm.getAttribute("IVALT_KEYCLOCKIDP_API_BASE_URL", 
-                "https://dev.api.ivalt.com/admin/public/api/keyclockidp"),
-            "IVALT_KEYCLOCKIDP_API_KEY", realm.getAttribute("IVALT_KEYCLOCKIDP_API_KEY", ""),
-            "IVALT_KEYCLOCKIDP_API_TIMEOUT", realm.getAttribute("IVALT_KEYCLOCKIDP_API_TIMEOUT", "300000")
+            "IVALT_KEYCLOCKIDP_API_BASE_URL", "https://dev.api.ivalt.com/admin/public/api/keyclockidp",
+            "IVALT_KEYCLOCKIDP_API_KEY", "", // TODO: Get from realm or component config
+            "IVALT_KEYCLOCKIDP_API_TIMEOUT", "300000"
         );
         
         this.apiClient = new KeyClockIDPApiClient(config);
@@ -74,7 +75,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to get active geofences", e);
-            return ErrorResponse.error("Failed to get active geofences", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to get active geofences\"}").build();
         }
     }
 
@@ -92,7 +93,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to create geofence", e);
-            return ErrorResponse.error("Failed to create geofence", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to create geofence\"}").build();
         }
     }
 
@@ -110,7 +111,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.errorf("Failed to update geofence: %d", geofenceId, e);
-            return ErrorResponse.error("Failed to update geofence", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to update geofence\"}").build();
         }
     }
 
@@ -127,7 +128,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.errorf("Failed to delete geofence: %d", geofenceId, e);
-            return ErrorResponse.error("Failed to delete geofence", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to delete geofence\"}").build();
         }
     }
 
@@ -144,7 +145,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to get assigned geofences", e);
-            return ErrorResponse.error("Failed to get assigned geofences", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to get assigned geofences\"}").build();
         }
     }
 
@@ -162,7 +163,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to assign geofence", e);
-            return ErrorResponse.error("Failed to assign geofence", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to assign geofence\"}").build();
         }
     }
 
@@ -180,7 +181,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to remove geofence assignment", e);
-            return ErrorResponse.error("Failed to remove geofence assignment", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to remove geofence assignment\"}").build();
         }
     }
 
@@ -200,7 +201,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to get active time windows", e);
-            return ErrorResponse.error("Failed to get active time windows", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to get active time windows\"}").build();
         }
     }
 
@@ -218,7 +219,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to create time window", e);
-            return ErrorResponse.error("Failed to create time window", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to create time window\"}").build();
         }
     }
 
@@ -236,7 +237,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.errorf("Failed to update time window: %d", timewindowId, e);
-            return ErrorResponse.error("Failed to update time window", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to update time window\"}").build();
         }
     }
 
@@ -253,7 +254,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.errorf("Failed to delete time window: %d", timewindowId, e);
-            return ErrorResponse.error("Failed to delete time window", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to delete time window\"}").build();
         }
     }
 
@@ -270,7 +271,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to get assigned time windows", e);
-            return ErrorResponse.error("Failed to get assigned time windows", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to get assigned time windows\"}").build();
         }
     }
 
@@ -288,7 +289,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to assign time window", e);
-            return ErrorResponse.error("Failed to assign time window", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to assign time window\"}").build();
         }
     }
 
@@ -306,7 +307,7 @@ public class IvaltSettingsResource {
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to remove time window assignment", e);
-            return ErrorResponse.error("Failed to remove time window assignment", Response.Status.INTERNAL_SERVER_ERROR);
+            return Response.serverError().entity("{\"error\":\"Failed to remove time window assignment\"}").build();
         }
     }
 }

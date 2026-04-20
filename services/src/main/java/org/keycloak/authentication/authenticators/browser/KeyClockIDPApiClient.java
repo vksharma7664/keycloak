@@ -208,7 +208,7 @@ public class KeyClockIDPApiClient {
                 .header("Content-Type", "application/json")
                 .header("x-api-key", apiKey)
                 .timeout(Duration.ofMillis(timeout))
-                .DELETE(HttpRequest.BodyPublishers.ofString(payload))
+                .method("DELETE", HttpRequest.BodyPublishers.ofString(payload))
                 .build();
 
         logger.debugf("KeyClockIDP API DELETE request to %s", url);
