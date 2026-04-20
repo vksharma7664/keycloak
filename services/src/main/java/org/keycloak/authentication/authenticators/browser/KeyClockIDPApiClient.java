@@ -18,15 +18,9 @@
 package org.keycloak.authentication.authenticators.browser;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -35,25 +29,18 @@ import java.util.Map;
  * 
  * @author iVALT Integration Team
  */
-public class KeyClockIDPApiClient {
+public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
 
     private static final Logger logger = Logger.getLogger(KeyClockIDPApiClient.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final String baseUrl;
-    private final String apiKey;
-    private final int timeout;
-    private final HttpClient httpClient;
 
     public KeyClockIDPApiClient(Map<String, String> config) {
-        this.baseUrl = config.getOrDefault(IvaltAuthenticatorFactory.IVALT_API_BASE_URL, 
-                "https://api.ivalt.com");
-        this.apiKey = config.get(IvaltAuthenticatorFactory.IVALT_API_KEY);
-        this.timeout = Integer.parseInt(config.getOrDefault(IvaltAuthenticatorFactory.IVALT_API_TIMEOUT, "300000"));
-
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(timeout))
-                .build();
+        super(
+            config,
+            IvaltAuthenticatorFactory.IVALT_API_BASE_URL,
+            IvaltAuthenticatorFactory.IVALT_API_KEY,
+            IvaltAuthenticatorFactory.IVALT_API_TIMEOUT,
+            "https://api.ivalt.com"
+        );
     }
 
     /**
@@ -250,68 +237,5 @@ public class KeyClockIDPApiClient {
         String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/assigned-delete";
         logger.infof("Removing time window assignment from user");
         return deleteRequest(url, jsonPayload);
-    }
-
-    /**
-     * Generic POST request method
-     * 
-     * @param url API endpoint URL
-     * @param payload JSON payload to send
-     * @return JSON response from API
-     * @throws IOException If API call fails
-     */
-    private JsonNode postRequest(String url, String payload) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", apiKey)
-                .timeout(Duration.ofMillis(timeout))
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build();
-
-        logger.debugf("KeyClockIDP API POST request to %s", url);
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() == 200 || response.statusCode() == 201) {
-            logger.debugf("KeyClockIDP API POST request successful to %s", url);
-            return objectMapper.readTree(response.body());
-        } else {
-            logger.errorf("KeyClockIDP API request failed. Status: %d, Response: %s",
-                    response.statusCode(), response.body());
-            throw new IOException("KeyClockIDP API request failed: HTTP " + response.statusCode());
-        }
-
-    }
-
-    /**
-     * Generic DELETE request method
-     * 
-     * @param url API endpoint URL
-     * @param payload JSON payload to send
-     * @return JSON response from API
-     * @throws IOException If API call fails
-     */
-    private JsonNode deleteRequest(String url, String payload) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", apiKey)
-                .timeout(Duration.ofMillis(timeout))
-                .method("DELETE", HttpRequest.BodyPublishers.ofString(payload))
-                .build();
-
-        logger.debugf("KeyClockIDP API DELETE request to %s", url);
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() == 200 || response.statusCode() == 204) {
-            logger.debugf("KeyClockIDP API DELETE request successful to %s", url);
-            return objectMapper.readTree(response.body());
-        } else {
-            logger.errorf("KeyClockIDP API request failed. Status: %d, Response: %s",
-                    response.statusCode(), response.body());
-            throw new IOException("KeyClockIDP API request failed: HTTP " + response.statusCode());
-        }
     }
 }
