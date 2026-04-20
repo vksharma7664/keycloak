@@ -51,6 +51,8 @@ import { UserSessions } from "./UserSessions";
 import { UserEvents } from "../events/UserEvents";
 import { UserVerifiableCredentials } from "./UserVerifiableCredentials";
 import { UserWorkflows } from "./UserWorkflows";
+import UserGeofence from "./UserGeofence";
+import UserTimeWindow from "./UserTimeWindow";
 import {
   UIUserRepresentation,
   UserFormFields,
@@ -122,6 +124,8 @@ export default function EditUser() {
     toTab("identity-provider-links"),
   );
   const sessionsTab = useRoutableTab(toTab("sessions"));
+  const geofenceTab = useRoutableTab(toTab("geofence"));
+  const timewindowTab = useRoutableTab(toTab("timewindow"));
   const eventsTab = useRoutableTab(toTab("events"));
   const workflowsTab = useRoutableTab(toTab("workflows"));
   const verifiableCredentialsTab = useRoutableTab(
@@ -492,6 +496,24 @@ export default function EditUser() {
                   <UserWorkflows user={user.id} />
                 </Tab>
               )}
+              <Tab
+                data-testid="user-geofence-tab"
+                title={<TabTitleText>{t("geofence")}</TabTitleText>}
+                {...geofenceTab}
+              >
+                <PageSection variant="light">
+                  <UserGeofence />
+                </PageSection>
+              </Tab>
+              <Tab
+                data-testid="user-timewindow-tab"
+                title={<TabTitleText>{t("timewindow")}</TabTitleText>}
+                {...timewindowTab}
+              >
+                <PageSection variant="light">
+                  <UserTimeWindow />
+                </PageSection>
+              </Tab>
             </RoutableTabs>
           </FormProvider>
         </UserProfileProvider>

@@ -15,7 +15,9 @@ export type UserTab =
   | "identity-provider-links"
   | "events"
   | "workflows"
-  | "verifiable-credentials";
+  | "verifiable-credentials"
+  | "geofence"
+  | "timewindow";
 
 export type UserParams = {
   realm: string;
