@@ -45,7 +45,7 @@ class KeyClockIDPClient {
     }
   }
 
-  #getRealmPath(): string {
+  getRealmPath(): string {
     // Get realm from current URL path
     const pathParts = window.location.pathname.split("/");
     const realmIndex = pathParts.indexOf("console") - 1;
