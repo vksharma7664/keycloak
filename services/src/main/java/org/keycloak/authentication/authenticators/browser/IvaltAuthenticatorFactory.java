@@ -43,6 +43,10 @@ public class IvaltAuthenticatorFactory implements AuthenticatorFactory {
     public static final String IVALT_API_TIMEOUT = "ivalt.api.timeout";
     public static final String IVALT_POLL_INTERVAL = "ivalt.poll.interval";
 
+    public static final String IVALT_KEYCLOCKIDP_API_BASE_URL = "ivalt.keyclockidp.api.base.url";
+    public static final String IVALT_KEYCLOCKIDP_API_KEY = "ivalt.keyclockidp.api.key";
+    public static final String IVALT_KEYCLOCKIDP_API_TIMEOUT = "ivalt.keyclockidp.api.timeout";
+
     @Override
     public String getDisplayType() {
         return "iVALT MFA";
@@ -108,6 +112,31 @@ public class IvaltAuthenticatorFactory implements AuthenticatorFactory {
         pollInterval.setDefaultValue("2000");
         pollInterval.setHelpText("Interval for polling status in milliseconds");
         configProperties.add(pollInterval);
+
+        // KeyClockIDP API configuration
+        ProviderConfigProperty keyclockidpBaseUrl = new ProviderConfigProperty();
+        keyclockidpBaseUrl.setType(ProviderConfigProperty.STRING_TYPE);
+        keyclockidpBaseUrl.setName(IVALT_KEYCLOCKIDP_API_BASE_URL);
+        keyclockidpBaseUrl.setLabel("KeyClockIDP API Base URL");
+        keyclockidpBaseUrl.setDefaultValue("https://dev.api.ivalt.com/admin/public/api/keyclockidp");
+        keyclockidpBaseUrl.setHelpText("Base URL for KeyClockIDP API (Geofence and Time Window management)");
+        configProperties.add(keyclockidpBaseUrl);
+
+        ProviderConfigProperty keyclockidpApiKey = new ProviderConfigProperty();
+        keyclockidpApiKey.setType(ProviderConfigProperty.PASSWORD);
+        keyclockidpApiKey.setName(IVALT_KEYCLOCKIDP_API_KEY);
+        keyclockidpApiKey.setLabel("KeyClockIDP API Key (x-api-key)");
+        keyclockidpApiKey.setHelpText("API key for authenticating with KeyClockIDP service");
+        keyclockidpApiKey.setSecret(true);
+        configProperties.add(keyclockidpApiKey);
+
+        ProviderConfigProperty keyclockidpTimeout = new ProviderConfigProperty();
+        keyclockidpTimeout.setType(ProviderConfigProperty.STRING_TYPE);
+        keyclockidpTimeout.setName(IVALT_KEYCLOCKIDP_API_TIMEOUT);
+        keyclockidpTimeout.setLabel("KeyClockIDP API Timeout (ms)");
+        keyclockidpTimeout.setDefaultValue("300000");
+        keyclockidpTimeout.setHelpText("Timeout for KeyClockIDP API calls in milliseconds (default: 5 minutes)");
+        configProperties.add(keyclockidpTimeout);
 
         return configProperties;
     }

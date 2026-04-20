@@ -241,6 +241,14 @@ public class RealmAdminResource {
     }
 
     /**
+     * Base path for iVALT Settings (Geofence and Time Window management).
+     */
+    @Path("ivalt-settings")
+    public IvaltSettingsResource getIvaltSettings() {
+        return new IvaltSettingsResource(session, realm);
+    }
+
+    /**
      * Get realm default client scopes.  Only name and ids are returned.
      *
      * @return
