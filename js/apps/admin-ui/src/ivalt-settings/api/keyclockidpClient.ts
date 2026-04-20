@@ -1,21 +1,19 @@
 import {
   GeofenceCreateRequest,
-  GeofenceListResponse,
   GeofenceUpdateRequest,
+  GeofenceListResponse,
   TimeWindowCreateRequest,
-  TimeWindowListResponse,
   TimeWindowUpdateRequest,
-  ApiResponse,
+  TimeWindowListResponse,
   AssignRequest,
+  ApiResponse,
 } from "./types";
 
-const API_BASE_URL = "https://dev.api.ivalt.com/admin/public/api/keyclockidp";
-const API_KEY = process.env.KEYCLOCKIDP_API_KEY || "";
+const API_BASE_URL = "/admin"; // Keycloak admin REST base URL
 
 class KeyClockIDPClient {
   #headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "x-api-key": API_KEY,
   };
 
   async request<T>(
@@ -47,26 +45,35 @@ class KeyClockIDPClient {
     }
   }
 
+  #getRealmPath(): string {
+    // Get realm from current URL path
+    const pathParts = window.location.pathname.split("/");
+    const realmIndex = pathParts.indexOf("console") - 1;
+    return realmIndex >= 0 ? pathParts[realmIndex] : "master";
+  }
+
   // Geofence endpoints
   async getActiveGeofences(
     mobile: string,
     limit = 10,
     offset = 0,
   ): Promise<ApiResponse<GeofenceListResponse>> {
+    const realm = this.getRealmPath();
     const params = new URLSearchParams([
       ["mobile", mobile],
       ["limit", limit.toString()],
       ["offset", offset.toString()],
     ]);
     return this.request<GeofenceListResponse>(
-      `/geofence/active-list?${params}`,
+      `/realms/${realm}/ivalt-settings/geofences?${params}`,
     );
   }
 
   async createGeofence(
     request: GeofenceCreateRequest,
   ): Promise<ApiResponse<any>> {
-    return this.request("/geofence/create", {
+    const realm = this.getRealmPath();
+    return this.request(`/realms/${realm}/ivalt-settings/geofences`, {
       method: "POST",
       body: JSON.stringify(request),
     });
@@ -76,29 +83,39 @@ class KeyClockIDPClient {
     geofenceId: number,
     request: GeofenceUpdateRequest,
   ): Promise<ApiResponse<any>> {
-    return this.request(`/geofence/update/${geofenceId}`, {
-      method: "PUT",
-      body: JSON.stringify(request),
-    });
+    const realm = this.getRealmPath();
+    return this.request(
+      `/realms/${realm}/ivalt-settings/geofences/${geofenceId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
+    );
   }
 
   async deleteGeofence(
     geofenceId: number,
     mobile: string,
   ): Promise<ApiResponse<any>> {
-    return this.request(`/geofence/delete/${geofenceId}`, {
-      method: "DELETE",
-      body: JSON.stringify({ mobile }),
-    });
+    const realm = this.getRealmPath();
+    return this.request(
+      `/realms/${realm}/ivalt-settings/geofences/${geofenceId}?mobile=${mobile}`,
+      {
+        method: "DELETE",
+      },
+    );
   }
 
   async getAssignedGeofences(mobile: string): Promise<ApiResponse<any>> {
-    const params = new URLSearchParams({ mobile });
-    return this.request(`/geofence/assigned-list?${params}`);
+    const realm = this.getRealmPath();
+    return this.request(
+      `/realms/${realm}/ivalt-settings/geofences/assigned?mobile=${mobile}`,
+    );
   }
 
   async assignGeofence(request: AssignRequest): Promise<ApiResponse<any>> {
-    return this.request("/geofence/assign", {
+    const realm = this.getRealmPath();
+    return this.request(`/realms/${realm}/ivalt-settings/geofences/assign`, {
       method: "POST",
       body: JSON.stringify(request),
     });
@@ -107,7 +124,8 @@ class KeyClockIDPClient {
   async removeGeofenceAssignment(
     request: AssignRequest,
   ): Promise<ApiResponse<any>> {
-    return this.request("/geofence/assigned-delete", {
+    const realm = this.getRealmPath();
+    return this.request(`/realms/${realm}/ivalt-settings/geofences/assign`, {
       method: "DELETE",
       body: JSON.stringify(request),
     });
@@ -119,20 +137,22 @@ class KeyClockIDPClient {
     limit = 10,
     offset = 0,
   ): Promise<ApiResponse<TimeWindowListResponse>> {
+    const realm = this.getRealmPath();
     const params = new URLSearchParams([
       ["mobile", mobile],
       ["limit", limit.toString()],
       ["offset", offset.toString()],
     ]);
     return this.request<TimeWindowListResponse>(
-      `/timewindow/active-list?${params}`,
+      `/realms/${realm}/ivalt-settings/timewindows?${params}`,
     );
   }
 
   async createTimeWindow(
     request: TimeWindowCreateRequest,
   ): Promise<ApiResponse<any>> {
-    return this.request("/timewindow/create", {
+    const realm = this.getRealmPath();
+    return this.request(`/realms/${realm}/ivalt-settings/timewindows`, {
       method: "POST",
       body: JSON.stringify(request),
     });
@@ -142,29 +162,39 @@ class KeyClockIDPClient {
     timewindowId: number,
     request: TimeWindowUpdateRequest,
   ): Promise<ApiResponse<any>> {
-    return this.request(`/timewindow/update/${timewindowId}`, {
-      method: "PUT",
-      body: JSON.stringify(request),
-    });
+    const realm = this.getRealmPath();
+    return this.request(
+      `/realms/${realm}/ivalt-settings/timewindows/${timewindowId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
+    );
   }
 
   async deleteTimeWindow(
     timewindowId: number,
     mobile: string,
   ): Promise<ApiResponse<any>> {
-    return this.request(`/timewindow/delete/${timewindowId}`, {
-      method: "DELETE",
-      body: JSON.stringify({ mobile }),
-    });
+    const realm = this.getRealmPath();
+    return this.request(
+      `/realms/${realm}/ivalt-settings/timewindows/${timewindowId}?mobile=${mobile}`,
+      {
+        method: "DELETE",
+      },
+    );
   }
 
   async getAssignedTimeWindows(mobile: string): Promise<ApiResponse<any>> {
-    const params = new URLSearchParams([["mobile", mobile]]);
-    return this.request(`/timewindow/assigned-list?${params}`);
+    const realm = this.getRealmPath();
+    return this.request(
+      `/realms/${realm}/ivalt-settings/timewindows/assigned?mobile=${mobile}`,
+    );
   }
 
   async assignTimeWindow(request: AssignRequest): Promise<ApiResponse<any>> {
-    return this.request("/timewindow/assign", {
+    const realm = this.getRealmPath();
+    return this.request(`/realms/${realm}/ivalt-settings/timewindows/assign`, {
       method: "POST",
       body: JSON.stringify(request),
     });
@@ -173,7 +203,8 @@ class KeyClockIDPClient {
   async removeTimeWindowAssignment(
     request: AssignRequest,
   ): Promise<ApiResponse<any>> {
-    return this.request("/timewindow/assigned-delete", {
+    const realm = this.getRealmPath();
+    return this.request(`/realms/${realm}/ivalt-settings/timewindows/assign`, {
       method: "DELETE",
       body: JSON.stringify(request),
     });
