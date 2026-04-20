@@ -48,12 +48,11 @@ public class IvaltSettingsResource {
         this.realm = realm;
         
         // Get API client configuration from authenticator config
-        // TODO: Make this configurable through admin UI
-        // For now, use defaults from IvaltAuthenticatorFactory
+        // Uses same API base URL and API key as IvaltApiClient for consistency
         Map<String, String> config = Map.of(
-            "IVALT_KEYCLOCKIDP_API_BASE_URL", "https://dev.api.ivalt.com/admin/public/api/keyclockidp",
-            "IVALT_KEYCLOCKIDP_API_KEY", "", // TODO: Get from realm or component config
-            "IVALT_KEYCLOCKIDP_API_TIMEOUT", "300000"
+            IvaltAuthenticatorFactory.IVALT_API_BASE_URL, "https://api.ivalt.com",
+            IvaltAuthenticatorFactory.IVALT_API_KEY, "", // TODO: Get from authenticator config
+            IvaltAuthenticatorFactory.IVALT_API_TIMEOUT, "300000"
         );
         
         this.apiClient = new KeyClockIDPApiClient(config);

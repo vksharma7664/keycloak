@@ -46,10 +46,10 @@ public class KeyClockIDPApiClient {
     private final HttpClient httpClient;
 
     public KeyClockIDPApiClient(Map<String, String> config) {
-        this.baseUrl = config.getOrDefault(IvaltAuthenticatorFactory.IVALT_KEYCLOCKIDP_API_BASE_URL, 
-                "https://dev.api.ivalt.com/admin/public/api/keyclockidp");
-        this.apiKey = config.get(IvaltAuthenticatorFactory.IVALT_KEYCLOCKIDP_API_KEY);
-        this.timeout = Integer.parseInt(config.getOrDefault(IvaltAuthenticatorFactory.IVALT_KEYCLOCKIDP_API_TIMEOUT, "300000"));
+        this.baseUrl = config.getOrDefault(IvaltAuthenticatorFactory.IVALT_API_BASE_URL, 
+                "https://api.ivalt.com");
+        this.apiKey = config.get(IvaltAuthenticatorFactory.IVALT_API_KEY);
+        this.timeout = Integer.parseInt(config.getOrDefault(IvaltAuthenticatorFactory.IVALT_API_TIMEOUT, "300000"));
 
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(timeout))
@@ -66,7 +66,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode getActiveGeofences(String mobile, int limit, int offset) throws IOException, InterruptedException {
-        String url = baseUrl + "/geofence/active-list";
+        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/active-list";
         String payload = String.format("{\"mobile\":\"%s\",\"limit\":%d,\"offset\":%d}", mobile, limit, offset);
         logger.debugf("Getting active geofences for mobile %s with limit %d and offset %d", mobile, limit, offset);
         return postRequest(url, payload);
@@ -80,7 +80,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode createGeofence(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/geofence/create";
+        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/create";
         logger.infof("Creating new geofence");
         return postRequest(url, jsonPayload);
     }
@@ -94,7 +94,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode updateGeofence(int geofenceId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/geofence/update/" + geofenceId;
+        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/update/" + geofenceId;
         logger.infof("Updating geofence with ID %d", geofenceId);
         return postRequest(url, jsonPayload);
     }
@@ -108,7 +108,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode deleteGeofence(int geofenceId, String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/geofence/delete/" + geofenceId;
+        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/delete/" + geofenceId;
         String payload = String.format("{\"mobile\":\"%s\"}", mobile);
         logger.infof("Deleting geofence with ID %d for mobile %s", geofenceId, mobile);
         return deleteRequest(url, payload);
@@ -122,7 +122,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode getAssignedGeofences(String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/geofence/assigned-list";
+        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/assigned-list";
         String payload = String.format("{\"mobile\":\"%s\"}", mobile);
         logger.debugf("Getting assigned geofences for mobile %s", mobile);
         return postRequest(url, payload);
@@ -136,7 +136,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode assignGeofence(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/geofence/assign";
+        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/assign";
         logger.infof("Assigning geofence to user");
         return postRequest(url, jsonPayload);
     }
@@ -149,7 +149,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode removeGeofenceAssignment(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/geofence/assigned-delete";
+        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/assigned-delete";
         logger.infof("Removing geofence assignment from user");
         return deleteRequest(url, jsonPayload);
     }
@@ -164,7 +164,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode getActiveTimeWindows(String mobile, int limit, int offset) throws IOException, InterruptedException {
-        String url = baseUrl + "/timewindow/active-list";
+        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/active-list";
         String payload = String.format("{\"mobile\":\"%s\",\"limit\":%d,\"offset\":%d}", mobile, limit, offset);
         logger.debugf("Getting active time windows for mobile %s with limit %d and offset %d", mobile, limit, offset);
         return postRequest(url, payload);
@@ -178,7 +178,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode createTimeWindow(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/timewindow/create";
+        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/create";
         logger.infof("Creating new time window");
         return postRequest(url, jsonPayload);
     }
@@ -192,7 +192,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode updateTimeWindow(int timewindowId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/timewindow/update/" + timewindowId;
+        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/update/" + timewindowId;
         logger.infof("Updating time window with ID %d", timewindowId);
         return postRequest(url, jsonPayload);
     }
@@ -206,7 +206,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode deleteTimeWindow(int timewindowId, String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/timewindow/delete/" + timewindowId;
+        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/delete/" + timewindowId;
         String payload = String.format("{\"mobile\":\"%s\"}", mobile);
         logger.infof("Deleting time window with ID %d for mobile %s", timewindowId, mobile);
         return deleteRequest(url, payload);
@@ -220,7 +220,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode getAssignedTimeWindows(String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/timewindow/assigned-list";
+        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/assigned-list";
         String payload = String.format("{\"mobile\":\"%s\"}", mobile);
         logger.debugf("Getting assigned time windows for mobile %s", mobile);
         return postRequest(url, payload);
@@ -234,7 +234,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode assignTimeWindow(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/timewindow/assign";
+        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/assign";
         logger.infof("Assigning time window to user");
         return postRequest(url, jsonPayload);
     }
@@ -247,7 +247,7 @@ public class KeyClockIDPApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode removeTimeWindowAssignment(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/timewindow/assigned-delete";
+        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/assigned-delete";
         logger.infof("Removing time window assignment from user");
         return deleteRequest(url, jsonPayload);
     }
