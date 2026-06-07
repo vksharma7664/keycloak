@@ -361,6 +361,35 @@ export const UserForm = ({
                 },
               }}
             />
+            <Controller
+              name="attributes.mobile_number"
+              control={control}
+              render={({ field }) => (
+                <FormGroup
+                  label={t("mobileNumber")}
+                  fieldId="kc-mobile-number"
+                  labelIcon={
+                    <HelpItem
+                      helpText={t("mobileNumberHelp")}
+                      fieldLabelId="mobileNumber"
+                    />
+                  }
+                >
+                  <TextInput
+                    id="kc-mobile-number"
+                    type="tel"
+                    value={
+                      Array.isArray(field.value)
+                        ? field.value[0] || ""
+                        : (field.value as string) || ""
+                    }
+                    onChange={(_, value) =>
+                      field.onChange(value ? [value] : [])
+                    }
+                  />
+                </FormGroup>
+              )}
+            />
             <SwitchControl
               name="emailVerified"
               label={t("emailVerified")}
