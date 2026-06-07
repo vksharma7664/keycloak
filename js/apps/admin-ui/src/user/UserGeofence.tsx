@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -15,14 +15,20 @@ import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { KeycloakSpinner, useAlerts } from "@keycloak/keycloak-ui-shared";
 import { useAdminClient } from "../admin-client";
 import { useParams } from "../utils/useParams";
-import { UserParams } from "./routes/User";
+import type { UserParams } from "./routes/User";
 import { useKeyclockidpClient } from "../ivalt-settings/api/keyclockidpClient";
 import { getIvaltUserMobile } from "../ivalt-settings/api/userMobile";
-import { Geofence } from "../ivalt-settings/api/types";
+import type { Geofence } from "../ivalt-settings/api/types";
 
-function asArray<T>(data: any): T[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
+function asArray<T>(data: unknown): T[] {
+  if (Array.isArray(data)) return data as T[];
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as Record<string, unknown>)["data"])
+  ) {
+    return (data as Record<string, unknown>)["data"] as T[];
+  }
   return [];
 }
 
@@ -40,20 +46,27 @@ export default function UserGeofence() {
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const refresh = async (mobile: string) => {
-    const [assignedRes, activeRes] = await Promise.all([
-      keyclockidpClient.getAssignedGeofences(mobile),
-      keyclockidpClient.getActiveGeofences(100, 0),
-    ]);
-    setAssigned(assignedRes.success ? asArray<Geofence>(assignedRes.data) : []);
-    setAvailable(activeRes.success ? asArray<Geofence>(activeRes.data) : []);
-  };
+  const refresh = useCallback(
+    async (mobile: string) => {
+      const [assignedRes, activeRes] = await Promise.all([
+        keyclockidpClient.getAssignedGeofences(mobile),
+        keyclockidpClient.getActiveGeofences(100, 0),
+      ]);
+      setAssigned(
+        assignedRes.success ? asArray<Geofence>(assignedRes.data) : [],
+      );
+      setAvailable(activeRes.success ? asArray<Geofence>(activeRes.data) : []);
+    },
+    [keyclockidpClient],
+  );
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const mobile = await getIvaltUserMobile(adminClient, userId!);
+        const mobile = userId
+          ? await getIvaltUserMobile(adminClient, userId)
+          : "";
         setUserMobile(mobile);
         if (mobile) {
           await refresh(mobile);
@@ -65,8 +78,7 @@ export default function UserGeofence() {
       }
     };
     void fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, adminClient, addError, refresh]);
 
   const assignableOptions = useMemo(() => {
     const assignedIds = new Set(assigned.map((g) => g.id));
