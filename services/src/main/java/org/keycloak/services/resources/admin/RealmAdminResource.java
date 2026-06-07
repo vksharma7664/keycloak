@@ -245,7 +245,7 @@ public class RealmAdminResource {
      */
     @Path("ivalt-settings")
     public IvaltSettingsResource getIvaltSettings() {
-        return new IvaltSettingsResource(session, realm);
+        return new IvaltSettingsResource(session, realm, auth);
     }
 
     /**

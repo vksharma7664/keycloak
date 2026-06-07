@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { keyclockidpClient } from "../api/keyclockidpClient";
+import { useKeyclockidpClient } from "../api/keyclockidpClient";
 import { TimeWindow } from "../api/types";
 import {
   Button,
@@ -13,6 +13,7 @@ import TimeWindowTable from "./TimeWindowTable";
 import TimeWindowForm from "./TimeWindowForm";
 
 export default function TimeWindowList() {
+  const keyclockidpClient = useKeyclockidpClient();
   const [timeWindows, setTimeWindows] = useState<TimeWindow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,16 +23,15 @@ export default function TimeWindowList() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const mobile = "+919530654704"; // TODO: Get from user context
-
   useEffect(() => {
     void loadTimeWindows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadTimeWindows = async () => {
     setLoading(true);
     setError(null);
-    const response = await keyclockidpClient.getActiveTimeWindows(mobile);
+    const response = await keyclockidpClient.getActiveTimeWindows();
     if (response.success && response.data) {
       setTimeWindows(response.data.data);
     } else {
@@ -51,10 +51,7 @@ export default function TimeWindowList() {
   };
 
   const handleDelete = async (timeWindowId: number) => {
-    const response = await keyclockidpClient.deleteTimeWindow(
-      timeWindowId,
-      mobile,
-    );
+    const response = await keyclockidpClient.deleteTimeWindow(timeWindowId);
     if (response.success) {
       setSuccess("Time window deleted successfully");
       void loadTimeWindows();

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { keyclockidpClient } from "../api/keyclockidpClient";
+import { useKeyclockidpClient } from "../api/keyclockidpClient";
 import { Geofence } from "../api/types";
 import {
   Button,
@@ -13,6 +13,7 @@ import GeofenceTable from "./GeofenceTable";
 import GeofenceForm from "./GeofenceForm";
 
 export default function GeofenceList() {
+  const keyclockidpClient = useKeyclockidpClient();
   const [geofences, setGeofences] = useState<Geofence[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,16 +21,15 @@ export default function GeofenceList() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const mobile = "+919530654704"; // TODO: Get from user context
-
   useEffect(() => {
     void loadGeofences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadGeofences = async () => {
     setLoading(true);
     setError(null);
-    const response = await keyclockidpClient.getActiveGeofences(mobile);
+    const response = await keyclockidpClient.getActiveGeofences();
     if (response.success && response.data) {
       setGeofences(response.data.data);
     } else {
@@ -49,7 +49,7 @@ export default function GeofenceList() {
   };
 
   const handleDelete = async (geofenceId: number) => {
-    const response = await keyclockidpClient.deleteGeofence(geofenceId, mobile);
+    const response = await keyclockidpClient.deleteGeofence(geofenceId);
     if (response.success) {
       setSuccess("Geofence deleted successfully");
       void loadGeofences();

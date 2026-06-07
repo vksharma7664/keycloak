@@ -14,7 +14,9 @@ export interface Geofence {
   updated_at: string;
 }
 
-export interface GeofenceCreateRequest extends MobileRequest {
+export interface GeofenceCreateRequest {
+  // Resolved server-side from the organization mobile when omitted.
+  mobile?: string;
   name: string;
   latitude: number;
   longitude: number;
@@ -22,7 +24,8 @@ export interface GeofenceCreateRequest extends MobileRequest {
   is_active?: boolean;
 }
 
-export interface GeofenceUpdateRequest extends MobileRequest {
+export interface GeofenceUpdateRequest {
+  mobile?: string;
   name?: string;
   latitude?: number;
   longitude?: number;
@@ -51,7 +54,8 @@ export interface TimeWindow {
   updated_at: string;
 }
 
-export interface TimeWindowCreateRequest extends MobileRequest {
+export interface TimeWindowCreateRequest {
+  mobile?: string;
   name: string;
   start_time: string;
   end_time: string;
@@ -60,7 +64,8 @@ export interface TimeWindowCreateRequest extends MobileRequest {
   status?: boolean;
 }
 
-export interface TimeWindowUpdateRequest extends MobileRequest {
+export interface TimeWindowUpdateRequest {
+  mobile?: string;
   name?: string;
   start_time?: string;
   end_time?: string;
@@ -78,7 +83,8 @@ export interface TimeWindowListResponse {
 }
 
 export interface AssignRequest {
-  mobile: string;
+  // Organization mobile; resolved server-side when omitted.
+  mobile?: string;
   user_mobile: string;
   geofence_id?: number;
   timewindow_id?: number;
@@ -89,6 +95,18 @@ export interface ApiResponse<T> {
   data?: T;
   message?: string;
   error?: string;
+}
+
+export interface IvaltConfig {
+  orgMobile: string;
+  apiBaseUrl: string;
+  apiKeyConfigured: boolean;
+}
+
+export interface IvaltConfigUpdateRequest {
+  orgMobile?: string;
+  apiBaseUrl?: string;
+  apiKey?: string;
 }
 
 export type DayOfWeek = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";

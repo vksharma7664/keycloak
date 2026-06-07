@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keyclockidpClient } from "../api/keyclockidpClient";
+import { useKeyclockidpClient } from "../api/keyclockidpClient";
 import {
   Geofence,
   GeofenceCreateRequest,
@@ -30,6 +30,7 @@ export default function GeofenceForm({
   onClose,
   onSave,
 }: GeofenceFormProps) {
+  const keyclockidpClient = useKeyclockidpClient();
   const [name, setName] = useState(geofence?.name || "");
   const [latitude, setLatitude] = useState(geofence?.latitude || 0);
   const [longitude, setLongitude] = useState(geofence?.longitude || 0);
@@ -37,8 +38,6 @@ export default function GeofenceForm({
   const [isActive, setIsActive] = useState(geofence?.is_active ?? true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const mobile = "+919530654704"; // TODO: Get from user context
 
   const handleLocationSelect = (lat: number, lng: number) => {
     setLatitude(lat);
@@ -69,7 +68,6 @@ export default function GeofenceForm({
     try {
       if (geofence) {
         const request: GeofenceUpdateRequest = {
-          mobile,
           name,
           latitude,
           longitude,
@@ -87,7 +85,6 @@ export default function GeofenceForm({
         }
       } else {
         const request: GeofenceCreateRequest = {
-          mobile,
           name,
           latitude,
           longitude,

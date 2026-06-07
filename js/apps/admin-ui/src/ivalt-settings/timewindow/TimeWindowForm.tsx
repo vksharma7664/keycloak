@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keyclockidpClient } from "../api/keyclockidpClient";
+import { useKeyclockidpClient } from "../api/keyclockidpClient";
 import {
   TimeWindow,
   TimeWindowCreateRequest,
@@ -47,6 +47,7 @@ export default function TimeWindowForm({
   onClose,
   onSave,
 }: TimeWindowFormProps) {
+  const keyclockidpClient = useKeyclockidpClient();
   const [name, setName] = useState(timeWindow?.name || "");
   const [startTime, setStartTime] = useState(timeWindow?.start_time || "");
   const [endTime, setEndTime] = useState(timeWindow?.end_time || "");
@@ -61,8 +62,6 @@ export default function TimeWindowForm({
   const [error, setError] = useState<string | null>(null);
   const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
 
-  const mobile = "+919530654704"; // TODO: Get from user context
-
   const handleDayToggle = (day: DayOfWeek) => {
     setDaysActive((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
@@ -70,7 +69,7 @@ export default function TimeWindowForm({
   };
 
   const handleTimezoneSelect = (
-    event?: React.MouseEvent,
+    _event?: React.MouseEvent,
     selection?: string | number,
   ) => {
     if (typeof selection === "string") {
@@ -103,7 +102,6 @@ export default function TimeWindowForm({
     try {
       if (timeWindow) {
         const request: TimeWindowUpdateRequest = {
-          mobile,
           name,
           start_time: startTime,
           end_time: endTime,
@@ -122,7 +120,6 @@ export default function TimeWindowForm({
         }
       } else {
         const request: TimeWindowCreateRequest = {
-          mobile,
           name,
           start_time: startTime,
           end_time: endTime,

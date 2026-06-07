@@ -3,41 +3,51 @@ import type { Path } from "react-router-dom";
 import { generateEncodedPath } from "../../utils/generateEncodedPath";
 import type { AppRouteObject } from "../../routes";
 
-export type IvaultSettingsTab = "geofence" | "timewindow";
-
-export type IvaultSettingsParams = {
+export type IvaltRealmParams = {
   realm: string;
-  tab?: IvaultSettingsTab;
 };
 
-const IvaultSettingsSection = lazy(() =>
-  import("../IvaultSettingsSection").then((m) => ({ default: m.default })),
-);
+const GeoFenceSection = lazy(() => import("../GeoFenceSection"));
+const TimeWindowSection = lazy(() => import("../TimeWindowSection"));
+const IvaltConfigSection = lazy(() => import("../IvaltConfigSection"));
 
-export const IvaultSettingsRoute: AppRouteObject = {
-  path: "/:realm/ivalt-settings",
-  element: <IvaultSettingsSection />,
-  breadcrumb: (t: any) => t("ivaltSettings"),
+export const GeoFencesRoute: AppRouteObject = {
+  path: "/:realm/geofences",
+  element: <GeoFenceSection />,
+  breadcrumb: (t) => t("geoFences"),
   handle: {
     access: "view-realm",
   },
 };
 
-export const IvaultSettingsRouteWithTab: AppRouteObject = {
-  ...IvaultSettingsRoute,
-  path: "/:realm/ivalt-settings/:tab",
+export const TimeWindowsRoute: AppRouteObject = {
+  path: "/:realm/time-windows",
+  element: <TimeWindowSection />,
+  breadcrumb: (t) => t("timeWindows"),
+  handle: {
+    access: "view-realm",
+  },
 };
 
-export const toIvaultSettings = (
-  params: IvaultSettingsParams,
-): Partial<Path> => {
-  const path = params.tab
-    ? IvaultSettingsRouteWithTab.path
-    : IvaultSettingsRoute.path;
-
-  return {
-    pathname: generateEncodedPath(path, params),
-  };
+export const IvaltConfigRoute: AppRouteObject = {
+  path: "/:realm/ivalt-settings",
+  element: <IvaltConfigSection />,
+  breadcrumb: (t) => t("ivaltSettings"),
+  handle: {
+    access: "view-realm",
+  },
 };
 
-export default [IvaultSettingsRoute, IvaultSettingsRouteWithTab];
+export const toGeoFences = (params: IvaltRealmParams): Partial<Path> => ({
+  pathname: generateEncodedPath(GeoFencesRoute.path, params),
+});
+
+export const toTimeWindows = (params: IvaltRealmParams): Partial<Path> => ({
+  pathname: generateEncodedPath(TimeWindowsRoute.path, params),
+});
+
+export const toIvaltConfig = (params: IvaltRealmParams): Partial<Path> => ({
+  pathname: generateEncodedPath(IvaltConfigRoute.path, params),
+});
+
+export default [GeoFencesRoute, TimeWindowsRoute, IvaltConfigRoute];

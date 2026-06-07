@@ -137,6 +137,8 @@ export const PageNav = () => {
               <LeftNav title="groups" path="/groups" />
               <LeftNav title="sessions" path="/sessions" />
               <LeftNav title="events" path="/events" />
+              <LeftNav title="timeWindows" path="/time-windows" />
+              <LeftNav title="geoFences" path="/geofences" />
             </NavGroup>
           )}
 
