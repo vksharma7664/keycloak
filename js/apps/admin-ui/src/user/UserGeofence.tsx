@@ -17,6 +17,7 @@ import { useAdminClient } from "../admin-client";
 import { useParams } from "../utils/useParams";
 import { UserParams } from "./routes/User";
 import { useKeyclockidpClient } from "../ivalt-settings/api/keyclockidpClient";
+import { getIvaltUserMobile } from "../ivalt-settings/api/userMobile";
 import { Geofence } from "../ivalt-settings/api/types";
 
 function asArray<T>(data: any): T[] {
@@ -52,8 +53,7 @@ export default function UserGeofence() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const user = await adminClient.users.findOne({ id: userId! });
-        const mobile = user?.attributes?.mobile_number?.[0] || "";
+        const mobile = await getIvaltUserMobile(adminClient, userId!);
         setUserMobile(mobile);
         if (mobile) {
           await refresh(mobile);
