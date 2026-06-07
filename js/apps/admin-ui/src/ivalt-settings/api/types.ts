@@ -47,7 +47,6 @@ export interface TimeWindow {
   name: string;
   start_time: string;
   end_time: string;
-  days_active: string[];
   timezone: string[];
   status: boolean;
   created_at: string;
@@ -59,7 +58,6 @@ export interface TimeWindowCreateRequest {
   name: string;
   start_time: string;
   end_time: string;
-  days_active: string[];
   timezone?: string[];
   status?: boolean;
 }
@@ -69,7 +67,6 @@ export interface TimeWindowUpdateRequest {
   name?: string;
   start_time?: string;
   end_time?: string;
-  days_active?: string[];
   timezone?: string[];
   status?: boolean;
 }
@@ -108,5 +105,3 @@ export interface IvaltConfigUpdateRequest {
   apiBaseUrl?: string;
   apiKey?: string;
 }
-
-export type DayOfWeek = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";

@@ -17,6 +17,7 @@ import { useAdminClient } from "../admin-client";
 import { useParams } from "../utils/useParams";
 import { UserParams } from "./routes/User";
 import { useKeyclockidpClient } from "../ivalt-settings/api/keyclockidpClient";
+import { getIvaltUserMobile } from "../ivalt-settings/api/userMobile";
 import { TimeWindow } from "../ivalt-settings/api/types";
 
 function asArray<T>(data: any): T[] {
@@ -54,8 +55,7 @@ export default function UserTimeWindow() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const user = await adminClient.users.findOne({ id: userId! });
-        const mobile = user?.attributes?.mobile_number?.[0] || "";
+        const mobile = await getIvaltUserMobile(adminClient, userId!);
         setUserMobile(mobile);
         if (mobile) {
           await refresh(mobile);
@@ -159,21 +159,19 @@ export default function UserTimeWindow() {
           <Tr>
             <Th>{t("name")}</Th>
             <Th>{t("ivaltTimeRange")}</Th>
-            <Th>{t("ivaltDays")}</Th>
             <Th aria-label={t("actions")} />
           </Tr>
         </Thead>
         <Tbody>
           {assigned.length === 0 ? (
             <Tr>
-              <Td colSpan={4}>{t("noTimeWindowsAssigned")}</Td>
+              <Td colSpan={3}>{t("noTimeWindowsAssigned")}</Td>
             </Tr>
           ) : (
             assigned.map((w) => (
               <Tr key={w.id}>
                 <Td>{w.name}</Td>
                 <Td>{`${w.start_time} - ${w.end_time}`}</Td>
-                <Td>{(w.days_active || []).join(", ")}</Td>
                 <Td isActionCell>
                   <Button
                     variant="link"

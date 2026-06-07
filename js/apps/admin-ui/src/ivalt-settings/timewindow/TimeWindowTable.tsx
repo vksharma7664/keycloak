@@ -8,7 +8,7 @@ import {
   TableText,
 } from "@patternfly/react-table";
 import { Button } from "@patternfly/react-core";
-import { TimeWindow } from "../api/types";
+import type { TimeWindow } from "../api/types";
 
 interface TimeWindowTableProps {
   timeWindows: TimeWindow[];
@@ -23,7 +23,7 @@ export default function TimeWindowTable({
   onEdit,
   onDelete,
 }: TimeWindowTableProps) {
-  const columns = ["ID", "Name", "Time Range", "Days", "Status", "Actions"];
+  const columns = ["ID", "Name", "Time Range", "Status", "Actions"];
 
   return (
     <Table aria-label="Time Window table" variant="compact">
@@ -37,11 +37,11 @@ export default function TimeWindowTable({
       <Tbody>
         {loading ? (
           <Tr>
-            <Td colSpan={6}>Loading...</Td>
+            <Td colSpan={5}>Loading...</Td>
           </Tr>
         ) : timeWindows.length === 0 ? (
           <Tr>
-            <Td colSpan={6}>No time windows found</Td>
+            <Td colSpan={5}>No time windows found</Td>
           </Tr>
         ) : (
           timeWindows.map((timeWindow) => (
@@ -51,7 +51,6 @@ export default function TimeWindowTable({
                 <TableText wrapModifier="truncate">{timeWindow.name}</TableText>
               </Td>
               <Td>{`${timeWindow.start_time} - ${timeWindow.end_time}`}</Td>
-              <Td>{timeWindow.days_active.join(", ")}</Td>
               <Td>{timeWindow.status ? "Active" : "Inactive"}</Td>
               <Td>
                 <Button variant="plain" onClick={() => onEdit(timeWindow)}>

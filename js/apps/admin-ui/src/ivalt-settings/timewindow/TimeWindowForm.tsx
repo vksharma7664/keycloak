@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useKeyclockidpClient } from "../api/keyclockidpClient";
-import {
+import type {
   TimeWindow,
   TimeWindowCreateRequest,
   TimeWindowUpdateRequest,
-  DayOfWeek,
 } from "../api/types";
 import {
   Modal,
@@ -26,8 +25,6 @@ interface TimeWindowFormProps {
   onClose: () => void;
   onSave: () => void;
 }
-
-const DAYS: DayOfWeek[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const COMMON_TIMEZONES = [
   "America/Los_Angeles",
@@ -51,22 +48,11 @@ export default function TimeWindowForm({
   const [name, setName] = useState(timeWindow?.name || "");
   const [startTime, setStartTime] = useState(timeWindow?.start_time || "");
   const [endTime, setEndTime] = useState(timeWindow?.end_time || "");
-  const [daysActive, setDaysActive] = useState<DayOfWeek[]>(
-    timeWindow?.days_active.filter((d): d is DayOfWeek =>
-      DAYS.includes(d as DayOfWeek),
-    ) || [],
-  );
   const [timezone, setTimezone] = useState(timeWindow?.timezone?.[0] || "UTC");
   const [isActive, setIsActive] = useState(timeWindow?.status ?? true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
-
-  const handleDayToggle = (day: DayOfWeek) => {
-    setDaysActive((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
-    );
-  };
 
   const handleTimezoneSelect = (
     _event?: React.MouseEvent,
@@ -91,11 +77,6 @@ export default function TimeWindowForm({
       setError("End time is required");
       return;
     }
-    if (daysActive.length === 0) {
-      setError("At least one day must be selected");
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -105,7 +86,6 @@ export default function TimeWindowForm({
           name,
           start_time: startTime,
           end_time: endTime,
-          days_active: daysActive,
           timezone: [timezone],
           status: isActive,
         };
@@ -123,7 +103,6 @@ export default function TimeWindowForm({
           name,
           start_time: startTime,
           end_time: endTime,
-          days_active: daysActive,
           timezone: [timezone],
           status: isActive,
         };
@@ -170,17 +149,6 @@ export default function TimeWindowForm({
             value={endTime}
             onChange={(_, value) => setEndTime(value)}
           />
-        </FormGroup>
-        <FormGroup label="Active Days" fieldId="daysActive" isRequired>
-          {DAYS.map((day) => (
-            <Checkbox
-              key={day}
-              id={`day-${day}`}
-              label={day}
-              isChecked={daysActive.includes(day)}
-              onChange={() => handleDayToggle(day)}
-            />
-          ))}
         </FormGroup>
         <FormGroup label="Timezone" fieldId="timezone">
           <Select
