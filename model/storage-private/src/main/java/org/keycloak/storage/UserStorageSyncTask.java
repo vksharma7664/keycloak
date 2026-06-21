@@ -9,6 +9,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.ModelIllegalStateException;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.storage.UserStorageProviderModel.SyncMode;
 import org.keycloak.storage.user.ImportSynchronization;
 import org.keycloak.storage.user.SynchronizationResult;
@@ -100,15 +101,13 @@ final class UserStorageSyncTask implements ScheduledTask {
             return;
         }
 
-        UserStorageProviderModel provider = getStorageModel(session);
-
-        logger.debugf("Cancelling any running user periodic sync task '%s' for user storage provider provider '%s' in realm '%s'", getTaskName(), provider.getName(), realmId);
+        logger.debugf("Cancelling any running user periodic sync task '%s' for user storage provider provider '%s' in realm '%s'", getTaskName(), providerId, realmId);
 
         TimerTaskContext existingTask = timer.cancelTask(getTaskName());
 
         if (existingTask != null) {
-            logger.debugf("Cancelled periodic sync task with task-name '%s' for provider with id '%s' and name '%s'",
-                    getTaskName(), provider.getId(), provider.getName());
+            logger.debugf("Cancelled periodic sync task with task-name '%s' for provider with id '%s'",
+                    getTaskName(), providerId);
         }
     }
 
@@ -162,7 +161,11 @@ final class UserStorageSyncTask implements ScheduledTask {
             SynchronizationResult result = syncFunction.apply(sessionFactory, factory, provider);
 
             if (!result.isIgnored()) {
-                updateLastSyncInterval(session);
+                KeycloakModelUtils.runJobInTransaction(sessionFactory, s -> {
+                    RealmModel realm = s.realms().getRealm(realmId);
+                    s.getContext().setRealm(realm);
+                    updateLastSyncInterval(s);
+                });
             }
 
             return result;
@@ -212,7 +215,7 @@ final class UserStorageSyncTask implements ScheduledTask {
         int currentTime = Time.currentTime();
         int timeSinceLastSync = currentTime - lastSyncTime;
 
-        return timeSinceLastSync > period;
+        return timeSinceLastSync >= (period - 1);
     }
 
     private boolean isSchedulable(UserStorageProviderModel provider) {

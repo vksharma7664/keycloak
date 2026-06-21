@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.keycloak.OAuth2Constants;
 import org.keycloak.protocol.oid4vc.model.OID4VCAuthorizationDetail;
@@ -130,15 +131,12 @@ public class AccessTokenResponse extends AbstractHttpResponse {
      *
      * @return a list of authorization details, or an empty list if none are present.
      */
-    public List<OID4VCAuthorizationDetail> getOid4vcAuthorizationDetails() {
+    public List<OID4VCAuthorizationDetail> getOID4VCAuthorizationDetails() {
         return getAuthorizationDetails(OID4VCAuthorizationDetail.class);
     }
 
     private <ADR extends AuthorizationDetailsJSONRepresentation> List<ADR> getAuthorizationDetails(Class<ADR> clazz) {
-        if (authorizationDetails == null) {
-            return null;
-        }
-        return authorizationDetails.stream()
+        return Optional.ofNullable(authorizationDetails).orElse(List.of()).stream()
                 .map(authzResponse -> authzResponse.asSubtype(clazz))
                 .toList();
     }

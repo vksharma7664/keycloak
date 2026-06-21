@@ -32,9 +32,16 @@ import static org.keycloak.OID4VCConstants.CREDENTIAL_IDENTIFIERS;
  *
  * @author <a href="mailto:Forkim.Akwichek@adorsys.com">Forkim Akwichek</a>
  */
-public class OID4VCAuthorizationDetail extends AuthorizationDetailsJSONRepresentation {
+public class OID4VCAuthorizationDetail extends AuthorizationDetailsJSONRepresentation implements Cloneable {
 
     public static final String CLAIMS = "claims";
+    public static final String CREDENTIALS_OFFER_ID = "credentials_offer_id";
+
+    /**
+     * Access token (and refresh token) claim with reference to the issued-credential ID. Can be used to link issued-credential
+     * with token to be able to check at credential-request (or refresh-token request) if particular issued-credential still exists
+     */
+    public static final String ISSUED_CREDENTIAL_ID = "issued_credential_id";
 
     @JsonProperty(CREDENTIAL_CONFIGURATION_ID)
     private String credentialConfigurationId;
@@ -53,6 +60,12 @@ public class OID4VCAuthorizationDetail extends AuthorizationDetailsJSONRepresent
     @JsonProperty(CLAIMS)
     private List<ClaimsDescription> claims;
 
+    @JsonProperty(CREDENTIALS_OFFER_ID)
+    private String credentialsOfferId;
+
+    @JsonProperty(ISSUED_CREDENTIAL_ID)
+    private String issuedCredentialId;
+
     public String getCredentialConfigurationId() {
         return credentialConfigurationId;
     }
@@ -69,6 +82,22 @@ public class OID4VCAuthorizationDetail extends AuthorizationDetailsJSONRepresent
         this.credentialIdentifiers = credentialIdentifiers;
     }
 
+    public String getCredentialsOfferId() {
+        return credentialsOfferId;
+    }
+
+    public void setCredentialsOfferId(String credentialsOfferId) {
+        this.credentialsOfferId = credentialsOfferId;
+    }
+
+    public String getIssuedCredentialId() {
+        return issuedCredentialId;
+    }
+
+    public void setIssuedCredentialId(String issuedCredentialId) {
+        this.issuedCredentialId = issuedCredentialId;
+    }
+
     public List<ClaimsDescription> getClaims() {
         return claims;
     }
@@ -78,8 +107,9 @@ public class OID4VCAuthorizationDetail extends AuthorizationDetailsJSONRepresent
     }
 
     @Override
-    public String toString() {
-        return JsonSerialization.valueAsString(this);
+    public OID4VCAuthorizationDetail clone() {
+        String encoded = JsonSerialization.valueAsString(this);
+        return JsonSerialization.valueFromString(encoded, OID4VCAuthorizationDetail.class);
     }
 
     @Override
@@ -89,11 +119,19 @@ public class OID4VCAuthorizationDetail extends AuthorizationDetailsJSONRepresent
         if (!super.equals(o)) return false;
         OID4VCAuthorizationDetail that = (OID4VCAuthorizationDetail) o;
         return Objects.equals(credentialConfigurationId, that.credentialConfigurationId)
-                && Objects.equals(claims, that.claims);
+                && Objects.equals(credentialIdentifiers, that.credentialIdentifiers)
+                && Objects.equals(credentialsOfferId, that.credentialsOfferId)
+                && Objects.equals(issuedCredentialId, that.issuedCredentialId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), credentialConfigurationId, claims);
+        return Objects.hash(super.hashCode(),
+                credentialConfigurationId, credentialIdentifiers, credentialsOfferId, issuedCredentialId);
+    }
+
+    @Override
+    public String toString() {
+        return JsonSerialization.valueAsString(this);
     }
 }

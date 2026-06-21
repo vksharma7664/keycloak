@@ -17,9 +17,9 @@
 
 package org.keycloak.protocol.oidc.grants;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
+import java.util.Set;
 
 import jakarta.ws.rs.core.Response;
 
@@ -30,7 +30,6 @@ import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
 import org.keycloak.models.AuthenticatedClientSessionModel;
-import org.keycloak.models.ClientScopeModel;
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
@@ -188,7 +187,7 @@ public class AuthorizationCodeGrantType extends OAuth2GrantTypeBase {
         DPoPUtil.validateDPoPJkt(codeData.getDpopJkt(), session, event, cors);
 
         try {
-            session.clientPolicy().triggerOnEvent(new TokenRequestContext(formParams, parseResult, client));
+            session.clientPolicy().triggerOnEvent(new TokenRequestContext(formParams, parseResult));
         } catch (ClientPolicyException cpe) {
             event.detail(Details.REASON, Details.CLIENT_POLICY_ERROR);
             event.detail(Details.CLIENT_POLICY_ERROR, cpe.getError());
@@ -205,8 +204,7 @@ public class AuthorizationCodeGrantType extends OAuth2GrantTypeBase {
 
         // Compute client scopes again from scope parameter. Check if user still has them granted
         // (but in code-to-token request, it could just theoretically happen that they are not available)
-        Supplier<Stream<ClientScopeModel>> clientScopesSupplier = () -> TokenManager.getRequestedClientScopes(session, scopeParam, client, user);
-        if (!TokenManager.verifyConsentStillAvailable(session, user, client, clientScopesSupplier.get())) {
+        if (!TokenManager.verifyConsentStillAvailable(session, user, client, clientSession, scopeParam)) {
             String errorMessage = "Client no longer has requested consent from user";
             event.detail(Details.REASON, errorMessage);
             event.error(Errors.NOT_ALLOWED);
@@ -256,7 +254,7 @@ public class AuthorizationCodeGrantType extends OAuth2GrantTypeBase {
         }
 
         // Case when authorization_details response not generated
-        if ((authorizationDetailsResponse == null || authorizationDetailsResponse.isEmpty())) {
+        if (authorizationDetailsResponse == null || authorizationDetailsResponse.isEmpty()) {
             authorizationDetailsResponse = handleMissingAuthorizationDetails(clientSession.getUserSession(), clientSessionCtx);
             if (authorizationDetailsResponse != null && !authorizationDetailsResponse.isEmpty()) {
                 clientSessionCtx.setAttribute(AUTHORIZATION_DETAILS_RESPONSE, authorizationDetailsResponse);
@@ -276,6 +274,7 @@ public class AuthorizationCodeGrantType extends OAuth2GrantTypeBase {
                     s.getRefreshToken().setAuthorizationDetails(authDetailsResponse);
                 }
             }
+            s.code(codeData);
             return new TokenResponseContext(formParams, parseResult, clientSessionCtx, s);
         });
     }
@@ -294,5 +293,10 @@ public class AuthorizationCodeGrantType extends OAuth2GrantTypeBase {
             logger.debugf(e, "Failed to parse authorization_details for comparison");
             return false;
         }
+    }
+
+    @Override
+    public Set<String> getTokenParameterNames() {
+        return Collections.emptySet();
     }
 }

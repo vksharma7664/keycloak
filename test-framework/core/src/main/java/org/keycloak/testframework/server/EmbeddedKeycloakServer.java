@@ -1,33 +1,37 @@
 package org.keycloak.testframework.server;
 
-import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
 import org.keycloak.Keycloak;
 import org.keycloak.common.Version;
-import org.keycloak.it.utils.Maven;
-
-import io.quarkus.maven.dependency.Dependency;
-import org.eclipse.aether.artifact.Artifact;
+import org.keycloak.testframework.util.MavenProjectUtil;
 
 public class EmbeddedKeycloakServer implements KeycloakServer {
 
+    private final long startTimeout;
     private Keycloak keycloak;
     private boolean tlsEnabled = false;
+
+    public EmbeddedKeycloakServer(long startTimeout) {
+        this.startTimeout = startTimeout;
+    }
 
     @Override
     public void start(KeycloakServerConfigBuilder keycloakServerConfigBuilder, boolean tlsEnabled) {
         Keycloak.Builder builder = Keycloak.builder().setVersion(Version.VERSION);
         this.tlsEnabled = tlsEnabled;
 
-        for(Dependency dependency : keycloakServerConfigBuilder.toDependencies()) {
-            var version = Optional.ofNullable(Maven.getArtifact(dependency.getGroupId(), dependency.getArtifactId()))
-                    .map(Artifact::getVersion)
-                    .orElse("");
-            builder.addDependency(dependency.getGroupId(), dependency.getArtifactId(), version);
+        for(KeycloakDependency dependency : keycloakServerConfigBuilder.toDependencies()) {
+            KeycloakDependency updatedDependency = MavenProjectUtil.updateDependencyDetails(dependency);
+            builder.addDependency(updatedDependency.getGroupId(), updatedDependency.getArtifactId(), updatedDependency.getVersion());
         }
 
         keycloak = builder.start(keycloakServerConfigBuilder.toArgs());
+        if (!isRunning()) {
+            throw new RuntimeException("Keycloak failed to start");
+        }
+
+        ReadinessProbe.waitUntilReady(this, startTimeout);
     }
 
     @Override
@@ -56,4 +60,16 @@ public class EmbeddedKeycloakServer implements KeycloakServer {
             return "http://localhost:9001";
         }
     }
+
+    private boolean isRunning() {
+        Thread[] threads = new Thread[Thread.activeCount()];
+        Thread.enumerate(threads);
+        for (Thread t : threads) {
+            if (t.getName().equals("Quarkus Main Thread")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

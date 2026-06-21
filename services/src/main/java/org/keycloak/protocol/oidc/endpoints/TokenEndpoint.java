@@ -18,7 +18,10 @@
 package org.keycloak.protocol.oidc.endpoints;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.xml.namespace.QName;
 
 import jakarta.ws.rs.Consumes;
@@ -43,11 +46,13 @@ import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.OIDCProviderConfig;
 import org.keycloak.protocol.oidc.TokenManager;
 import org.keycloak.protocol.oidc.grants.OAuth2GrantType;
-import org.keycloak.protocol.oidc.grants.PreAuthorizedCodeGrantTypeFactory;
+import org.keycloak.protocol.oidc.token.TokenInterceptorException;
 import org.keycloak.protocol.oidc.utils.AuthorizeClientUtil;
 import org.keycloak.protocol.saml.JaxrsSAML2BindingBuilder;
 import org.keycloak.protocol.saml.SamlClient;
@@ -60,17 +65,20 @@ import org.keycloak.saml.common.util.DocumentUtil;
 import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.cors.Cors;
 import org.keycloak.services.util.DPoPUtil;
+import org.keycloak.utils.StringUtil;
 
 import org.jboss.logging.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+
+import static org.keycloak.protocol.oid4vc.model.PreAuthorizedCodeGrant.PRE_AUTH_GRANT_TYPE;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  */
 public class TokenEndpoint {
 
-    private static final Logger logger = Logger.getLogger(TokenEndpoint.class);
+    private static final Logger LOGGER = Logger.getLogger(TokenEndpoint.class);
     private MultivaluedMap<String, String> formParams;
     private ClientModel client;
     private Map<String, String> clientAuthAttributes;
@@ -118,6 +126,7 @@ public class TokenEndpoint {
         }
 
         formParams = formParameters;
+        sanitizeFormParameters();
         grantType = formParams.getFirst(OIDCLoginProtocol.GRANT_TYPE_PARAM);
 
         // https://tools.ietf.org/html/rfc6749#section-5.1
@@ -132,10 +141,12 @@ public class TokenEndpoint {
 
         if (!grantType.equals(OAuth2Constants.UMA_GRANT_TYPE)
                 // pre-authorized grants are not necessarily used by known clients.
-                && !grantType.equals(PreAuthorizedCodeGrantTypeFactory.GRANT_TYPE)) {
+                && !grantType.equals(PRE_AUTH_GRANT_TYPE)) {
             checkClient();
             checkParameterDuplicated();
         }
+
+        checkParameters();
 
         /*
          * To request an access token that is bound to a public key using DPoP, the client MUST provide a valid DPoP
@@ -148,7 +159,12 @@ public class TokenEndpoint {
 
         OAuth2GrantType.Context context = new OAuth2GrantType.Context(session, clientConfig, clientAuthAttributes,
                                                                       formParams, event, cors, tokenManager);
-        return grant.process(context);
+
+        try {
+            return grant.process(context);
+        } catch (TokenInterceptorException e) {
+            throw new CorsErrorResponseException(cors, e.getError(), e.getDescription(), Response.Status.BAD_REQUEST);
+        }
     }
 
     @Path("introspect")
@@ -158,8 +174,8 @@ public class TokenEndpoint {
 
     @OPTIONS
     public Response preflight() {
-        if (logger.isDebugEnabled()) {
-            logger.debugv("CORS preflight from: {0}", headers.getRequestHeaders().getFirst("Origin"));
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debugv("CORS preflight from: {0}", headers.getRequestHeaders().getFirst("Origin"));
         }
         return Cors.builder().auth().preflight().allowedMethods("POST", "OPTIONS").add(Response.ok());
     }
@@ -182,13 +198,11 @@ public class TokenEndpoint {
         clientAuthAttributes = clientAuth.getClientAuthAttributes();
         clientConfig = OIDCAdvancedConfigWrapper.fromClientModel(client);
 
-        cors.allowedOrigins(session, client);
+        cors.checkAllowedOrigins(session, client);
 
         if (client.isBearerOnly()) {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_CLIENT, "Bearer-only not allowed", Response.Status.BAD_REQUEST);
         }
-
-
     }
 
     private void checkGrantType() {
@@ -215,6 +229,45 @@ public class TokenEndpoint {
             if (entry.getValue().size() != 1 && !grant.getSupportedMultivaluedRequestParameters().contains(entry.getKey())) {
                 throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "duplicated parameter",
                         Response.Status.BAD_REQUEST);
+            }
+        }
+    }
+
+    private void sanitizeFormParameters() {
+        MultivaluedMap<String, String> sanitized = new MultivaluedHashMap<>();
+        for (Map.Entry<String, List<String>> entry : formParams.entrySet()) {
+            for (String value : entry.getValue()) {
+                sanitized.add(entry.getKey(), StringUtil.removeControlCharacters(value));
+            }
+        }
+        formParams = sanitized;
+    }
+
+
+    protected void checkParameters() {
+        OIDCLoginProtocol loginProtocol = (OIDCLoginProtocol) session.getProvider(LoginProtocol.class, OIDCLoginProtocol.LOGIN_PROTOCOL);
+        OIDCProviderConfig config = loginProtocol.getConfig();
+        Set<String> tokenParamNames = grant.getTokenParameterNames();
+
+        Map<String, List<String>> paramsCopy = new HashMap<>(formParams);
+        for (Map.Entry<String, List<String>> param : paramsCopy.entrySet()) {
+            String paramName = param.getKey();
+            int totalLengthOfParamValues = param.getValue().stream()
+                    .map(String::length)
+                    .reduce(0, Integer::sum);
+
+            // Does this parameter represent a token (typically JWT or SAML assertion)?
+            boolean isTokenParam = tokenParamNames.contains(paramName);
+
+            int maxLength = config.getMaxLengthForTheParameter(paramName, isTokenParam);
+            if (totalLengthOfParamValues > maxLength) {
+                LOGGER.warnf("The size of OIDC parameter '%s' is longer (%d) than allowed (%d). %s", paramName, totalLengthOfParamValues, maxLength, config.isAdditionalReqParamsFailFast(isTokenParam) ? "Request not allowed." : "Ignoring the parameter.");
+                if (config.isAdditionalReqParamsFailFast(isTokenParam)) {
+                    throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "The size of OIDC parameter '" + paramName + "' is longer than allowed.",
+                            Response.Status.BAD_REQUEST);
+                } else {
+                    formParams.remove(paramName);
+                }
             }
         }
     }

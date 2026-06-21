@@ -26,6 +26,7 @@ import org.keycloak.util.AuthorizationDetailsParser;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -41,7 +42,11 @@ public class AuthorizationDetailsJSONRepresentation implements Serializable {
     // The internal Keycloak's type for static scopes as a RAR request object
     public static final String STATIC_SCOPE_RAR_TYPE = "https://keycloak.org/auth-type/static-oauth2-scope";
 
-    // The internal Keycloak's type for dynamic scopes as a RAR request object
+    // The internal Keycloak's type for parameterized scopes as a RAR request object
+    public static final String PARAMETERIZED_SCOPE_RAR_TYPE = "https://keycloak.org/auth-type/parameterized-oauth2-scope";
+
+    /** @deprecated Use {@link #PARAMETERIZED_SCOPE_RAR_TYPE} instead. Kept for backward compatibility with existing data. */
+    @Deprecated
     public static final String DYNAMIC_SCOPE_RAR_TYPE = "https://keycloak.org/auth-type/dynamic-oauth2-scope";
 
     @JsonProperty("type")
@@ -139,8 +144,9 @@ public class AuthorizationDetailsJSONRepresentation implements Serializable {
         return AuthorizationDetailsParser.parseToSubtype(this, clazz);
     }
 
+    @JsonIgnore
     public String getScopeNameFromCustomData() {
-        if (this.getType().equalsIgnoreCase(DYNAMIC_SCOPE_RAR_TYPE) || this.getType().equalsIgnoreCase(STATIC_SCOPE_RAR_TYPE)) {
+        if (isParameterizedScopeRarType(this.getType()) || this.getType().equalsIgnoreCase(STATIC_SCOPE_RAR_TYPE)) {
             List<String> accessList = (List<String>) this.customData.get("access");
             if (accessList.isEmpty()) {
                 throw new RuntimeException("A RAR Scope representation should never have an empty access property");
@@ -150,11 +156,16 @@ public class AuthorizationDetailsJSONRepresentation implements Serializable {
         return null;
     }
 
-    public String getDynamicScopeParamFromCustomData() {
-        if(this.getType().equalsIgnoreCase(DYNAMIC_SCOPE_RAR_TYPE)) {
+    @JsonIgnore
+    public String getParameterizedScopeParamFromCustomData() {
+        if(isParameterizedScopeRarType(this.getType())) {
             return (String) this.customData.get("scope_parameter");
         }
         return null;
+    }
+
+    private static boolean isParameterizedScopeRarType(String type) {
+        return type.equalsIgnoreCase(PARAMETERIZED_SCOPE_RAR_TYPE) || type.equalsIgnoreCase(DYNAMIC_SCOPE_RAR_TYPE);
     }
 
     @Override

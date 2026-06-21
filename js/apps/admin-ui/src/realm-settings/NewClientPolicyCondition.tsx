@@ -228,12 +228,13 @@ export default function NewClientPolicyCondition() {
                   variant={SelectVariant.single}
                   aria-label={t("conditionType")}
                   isOpen={openConditionType}
+                  width="trigger"
                 >
                   {conditionTypes?.map((condition) => (
                     <SelectOption
                       data-testid={condition.id}
                       selected={condition.id === field.value}
-                      description={condition?.helpText}
+                      description={condition.helpText}
                       key={condition.id}
                       value={condition}
                     >

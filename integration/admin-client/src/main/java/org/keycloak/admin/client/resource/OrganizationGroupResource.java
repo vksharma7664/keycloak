@@ -41,7 +41,10 @@ public interface OrganizationGroupResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    GroupRepresentation toRepresentation();
+    GroupRepresentation toRepresentation(@QueryParam("subGroupsCount") boolean subGroupsCount);
+
+    @Path("role-mappings")
+    RoleMappingResource roles();
 
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
