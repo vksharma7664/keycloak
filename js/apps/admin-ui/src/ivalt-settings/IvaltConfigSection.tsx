@@ -24,8 +24,8 @@ export default function IvaltConfigSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [orgMobile, setOrgMobile] = useState("");
-  const [orgId, setOrgId] = useState("");
-  const [userId, setUserId] = useState("");
+  const [orgCode, setOrgCode] = useState("");
+  const [userMobile, setUserMobile] = useState("");
   const [apiBaseUrl, setApiBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
@@ -35,8 +35,8 @@ export default function IvaltConfigSection() {
     const response = await keyclockidpClient.getConfig();
     if (response.success && response.data) {
       setOrgMobile(response.data.orgMobile);
-      setOrgId(response.data.orgId);
-      setUserId(response.data.userId);
+      setOrgCode(response.data.orgCode);
+      setUserMobile(response.data.userMobile);
       setApiBaseUrl(response.data.apiBaseUrl);
       setApiKeyConfigured(response.data.apiKeyConfigured);
     } else {
@@ -54,8 +54,8 @@ export default function IvaltConfigSection() {
     setSaving(true);
     const response = await keyclockidpClient.updateConfig({
       orgMobile,
-      orgId,
-      userId,
+      orgCode,
+      userMobile,
       apiBaseUrl,
       // Only send the key when the admin entered a new value.
       ...(apiKey ? { apiKey } : {}),
@@ -96,39 +96,39 @@ export default function IvaltConfigSection() {
               />
             </FormGroup>
             <FormGroup
-              label={t("ivaltOrgId")}
-              fieldId="ivalt-org-id"
+              label={t("ivaltOrgCode")}
+              fieldId="ivalt-org-code"
               isRequired
               labelIcon={
                 <HelpItem
-                  helpText={t("ivaltOrgIdHelp")}
-                  fieldLabelId="ivaltOrgId"
+                  helpText={t("ivaltOrgCodeHelp")}
+                  fieldLabelId="ivaltOrgCode"
                 />
               }
             >
               <TextInput
-                id="ivalt-org-id"
-                value={orgId}
-                placeholder="e.g. 1"
-                onChange={(_, value) => setOrgId(value)}
+                id="ivalt-org-code"
+                value={orgCode}
+                placeholder="e.g. iVALT"
+                onChange={(_, value) => setOrgCode(value)}
               />
             </FormGroup>
             <FormGroup
-              label={t("ivaltUserId")}
-              fieldId="ivalt-user-id"
+              label={t("ivaltUserMobile")}
+              fieldId="ivalt-user-mobile"
               isRequired
               labelIcon={
                 <HelpItem
-                  helpText={t("ivaltUserIdHelp")}
-                  fieldLabelId="ivaltUserId"
+                  helpText={t("ivaltUserMobileHelp")}
+                  fieldLabelId="ivaltUserMobile"
                 />
               }
             >
               <TextInput
-                id="ivalt-user-id"
-                value={userId}
-                placeholder="e.g. 1"
-                onChange={(_, value) => setUserId(value)}
+                id="ivalt-user-mobile"
+                value={userMobile}
+                placeholder="e.g. +91..."
+                onChange={(_, value) => setUserMobile(value)}
               />
             </FormGroup>
             <FormGroup
