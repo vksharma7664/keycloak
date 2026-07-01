@@ -3,13 +3,13 @@ import { useMemo } from "react";
 import { useAdminClient } from "../../admin-client";
 import { getAuthorizationHeaders } from "../../utils/getAuthorizationHeaders";
 import { joinPath } from "../../utils/joinPath";
-import {
+import type {
+  Geofence,
   GeofenceCreateRequest,
   GeofenceUpdateRequest,
-  GeofenceListResponse,
+  TimeWindow,
   TimeWindowCreateRequest,
   TimeWindowUpdateRequest,
-  TimeWindowListResponse,
   AssignRequest,
   ApiResponse,
   IvaltConfig,
@@ -82,8 +82,22 @@ export class KeyClockIDPClient {
   }
 
   // Geofence endpoints
-  async getGeofences(): Promise<ApiResponse<GeofenceListResponse>> {
-    return this.#request<GeofenceListResponse>("geofences");
+  async getGeofences(
+    page?: number,
+    perPage?: number,
+    sortBy?: string,
+    sortOrder?: string,
+  ): Promise<ApiResponse<Geofence[]>> {
+    const query: Record<string, string> = {};
+    if (page) query.page = String(page);
+    if (perPage) query.per_page = String(perPage);
+    if (sortBy) query.sort_by = sortBy;
+    if (sortOrder) query.sort_order = sortOrder;
+    return this.#request<Geofence[]>(
+      "geofences",
+      {},
+      Object.keys(query).length ? query : undefined,
+    );
   }
 
   async createGeofence(
@@ -111,8 +125,22 @@ export class KeyClockIDPClient {
     });
   }
 
-  async getUserGeofences(): Promise<ApiResponse<any>> {
-    return this.#request("geofences/assigned");
+  async getUserGeofences(
+    page?: number,
+    perPage?: number,
+    sortBy?: string,
+    sortOrder?: string,
+  ): Promise<ApiResponse<Geofence[]>> {
+    const query: Record<string, string> = {};
+    if (page) query.page = String(page);
+    if (perPage) query.per_page = String(perPage);
+    if (sortBy) query.sort_by = sortBy;
+    if (sortOrder) query.sort_order = sortOrder;
+    return this.#request(
+      "geofences/assigned",
+      {},
+      Object.keys(query).length ? query : undefined,
+    );
   }
 
   async updateUserGeofences(request: AssignRequest): Promise<ApiResponse<any>> {
@@ -123,8 +151,22 @@ export class KeyClockIDPClient {
   }
 
   // Timeslot endpoints
-  async getTimeslots(): Promise<ApiResponse<TimeWindowListResponse>> {
-    return this.#request<TimeWindowListResponse>("timewindows");
+  async getTimeslots(
+    page?: number,
+    perPage?: number,
+    sortBy?: string,
+    sortOrder?: string,
+  ): Promise<ApiResponse<TimeWindow[]>> {
+    const query: Record<string, string> = {};
+    if (page) query.page = String(page);
+    if (perPage) query.per_page = String(perPage);
+    if (sortBy) query.sort_by = sortBy;
+    if (sortOrder) query.sort_order = sortOrder;
+    return this.#request<TimeWindow[]>(
+      "timewindows",
+      {},
+      Object.keys(query).length ? query : undefined,
+    );
   }
 
   async createTimeslot(
@@ -152,8 +194,22 @@ export class KeyClockIDPClient {
     });
   }
 
-  async getUserTimeslots(): Promise<ApiResponse<any>> {
-    return this.#request("timewindows/assigned");
+  async getUserTimeslots(
+    page?: number,
+    perPage?: number,
+    sortBy?: string,
+    sortOrder?: string,
+  ): Promise<ApiResponse<TimeWindow[]>> {
+    const query: Record<string, string> = {};
+    if (page) query.page = String(page);
+    if (perPage) query.per_page = String(perPage);
+    if (sortBy) query.sort_by = sortBy;
+    if (sortOrder) query.sort_order = sortOrder;
+    return this.#request(
+      "timewindows/assigned",
+      {},
+      Object.keys(query).length ? query : undefined,
+    );
   }
 
   async updateUserTimeslots(request: AssignRequest): Promise<ApiResponse<any>> {

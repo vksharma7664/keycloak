@@ -30,16 +30,24 @@ export interface GeofenceUpdateRequest {
   is_active?: boolean;
 }
 
+export interface PaginationMeta {
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
+}
+
 export interface GeofenceListResponse {
   success: boolean;
   data: Geofence[];
+  meta?: PaginationMeta;
   message?: string;
 }
 
 export interface TimeWindow {
   id: number;
   organization_id: number;
-  name: string;
+  name?: string;
   start_time: string;
   end_time: string;
   timezone: string[];
@@ -65,6 +73,7 @@ export interface TimeWindowUpdateRequest {
 export interface TimeWindowListResponse {
   success: boolean;
   data: TimeWindow[];
+  meta?: PaginationMeta;
   message?: string;
 }
 
@@ -76,22 +85,23 @@ export interface AssignRequest {
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
+  meta?: PaginationMeta;
   message?: string;
   error?: string;
 }
 
 export interface IvaltConfig {
   orgMobile: string;
-  orgId: string;
-  userId: string;
+  orgCode: string;
+  userMobile: string;
   apiBaseUrl: string;
   apiKeyConfigured: boolean;
 }
 
 export interface IvaltConfigUpdateRequest {
   orgMobile?: string;
-  orgId?: string;
-  userId?: string;
+  orgCode?: string;
+  userMobile?: string;
   apiBaseUrl?: string;
   apiKey?: string;
 }
