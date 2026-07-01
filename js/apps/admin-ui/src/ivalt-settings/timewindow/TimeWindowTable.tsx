@@ -48,7 +48,9 @@ export default function TimeWindowTable({
             <Tr key={timeWindow.id}>
               <Td>{timeWindow.id}</Td>
               <Td>
-                <TableText wrapModifier="truncate">{timeWindow.name}</TableText>
+                <TableText wrapModifier="truncate">
+                  {timeWindow.name || `Time Window #${timeWindow.id}`}
+                </TableText>
               </Td>
               <Td>{`${timeWindow.start_time} - ${timeWindow.end_time}`}</Td>
               <Td>{timeWindow.status ? "Active" : "Inactive"}</Td>
