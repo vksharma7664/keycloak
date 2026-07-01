@@ -123,7 +123,11 @@ export default function UserTimeWindow() {
                 isPlaceholder
               />
               {assignableOptions.map((w) => (
-                <FormSelectOption key={w.id} value={w.id} label={w.name} />
+                <FormSelectOption
+                  key={w.id}
+                  value={w.id}
+                  label={w.name || `Time Window #${w.id}`}
+                />
               ))}
             </FormSelect>
           </ToolbarItem>
@@ -154,7 +158,7 @@ export default function UserTimeWindow() {
           ) : (
             assigned.map((w) => (
               <Tr key={w.id}>
-                <Td>{w.name}</Td>
+                <Td>{w.name || `Time Window #${w.id}`}</Td>
                 <Td>{`${w.start_time} - ${w.end_time}`}</Td>
                 <Td isActionCell>
                   <Button
