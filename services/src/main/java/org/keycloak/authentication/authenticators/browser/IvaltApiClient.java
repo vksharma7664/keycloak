@@ -65,7 +65,7 @@ public class IvaltApiClient extends AbstractIvaltApiClient {
      */
     public String sendNotification(String mobileNumber, String username, String realm)
             throws IOException, InterruptedException {
-        String url = baseUrl + "/biometric-auth-request";
+        String url = baseUrl + "/send/global/notification";
 
         // Build request payload - API expects only mobile number
         String payload = String.format("{\"mobile\":\"%s\"}", mobileNumber);
@@ -87,7 +87,7 @@ public class IvaltApiClient extends AbstractIvaltApiClient {
      * @throws IOException If API call fails
      */
     public NotificationStatus getStatus(String mobileNumber) throws IOException, InterruptedException {
-        String url = baseUrl + "/biometric-geo-fence-auth-results";
+        String url = baseUrl + "/validate-geo-fence-auth";
 
         // Build request payload - API expects mobile number
         String payload = String.format("{\"mobile\":\"%s\"}", mobileNumber);
