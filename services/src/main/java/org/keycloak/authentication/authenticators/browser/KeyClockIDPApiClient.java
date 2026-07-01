@@ -24,9 +24,9 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * HTTP client for KeyClockIDP API integration
+ * HTTP client for iVALT API integration
  * Handles geofence and time window management operations
- * 
+ *
  * @author iVALT Integration Team
  */
 public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
@@ -43,199 +43,183 @@ public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
         );
     }
 
+    // -----------------------------------------------------------------
+    // Geofence endpoints (org-level)
+    // -----------------------------------------------------------------
+
     /**
-     * Get active geofences for a mobile number
-     * 
-     * @param mobile Mobile number to retrieve geofences for
-     * @param limit Maximum number of results to return
-     * @param offset Number of results to skip
-     * @return JSON response containing list of active geofences
+     * Get all geofences for an organization
+     *
+     * @param orgId Organization ID
+     * @return JSON response containing list of geofences
      * @throws IOException If API call fails
      */
-    public JsonNode getActiveGeofences(String mobile, int limit, int offset) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/active-list";
-        String payload = String.format("{\"mobile\":\"%s\",\"limit\":%d,\"offset\":%d}", mobile, limit, offset);
-        logger.debugf("Getting active geofences for mobile %s with limit %d and offset %d", mobile, limit, offset);
-        return postRequest(url, payload);
+    public JsonNode getGeofences(String orgId) throws IOException, InterruptedException {
+        String url = baseUrl + "/organization/" + orgId + "/geo-fences";
+        logger.debugf("Getting geofences for org %s", orgId);
+        return getRequest(url);
     }
 
     /**
-     * Create a new geofence
-     * 
+     * Create a new geofence for an organization
+     *
+     * @param orgId Organization ID
      * @param jsonPayload JSON payload containing geofence details
      * @return JSON response with created geofence details
      * @throws IOException If API call fails
      */
-    public JsonNode createGeofence(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/create";
-        logger.infof("Creating new geofence");
+    public JsonNode createGeofence(String orgId, String jsonPayload) throws IOException, InterruptedException {
+        String url = baseUrl + "/organization/" + orgId + "/create/geo-fence";
+        logger.infof("Creating new geofence for org %s", orgId);
         return postRequest(url, jsonPayload);
     }
 
     /**
      * Update an existing geofence
-     * 
+     *
+     * @param orgId Organization ID
      * @param geofenceId ID of the geofence to update
      * @param jsonPayload JSON payload containing updated geofence details
      * @return JSON response with updated geofence details
      * @throws IOException If API call fails
      */
-    public JsonNode updateGeofence(int geofenceId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/update/" + geofenceId;
-        logger.infof("Updating geofence with ID %d", geofenceId);
-        return postRequest(url, jsonPayload);
+    public JsonNode updateGeofence(String orgId, int geofenceId, String jsonPayload) throws IOException, InterruptedException {
+        String url = baseUrl + "/organization/" + orgId + "/update/geo-fence/" + geofenceId;
+        logger.infof("Updating geofence %d for org %s", geofenceId, orgId);
+        return putRequest(url, jsonPayload);
     }
 
     /**
      * Delete a geofence
-     * 
+     *
+     * @param orgId Organization ID
      * @param geofenceId ID of the geofence to delete
-     * @param mobile Mobile number for context
      * @return JSON response confirming deletion
      * @throws IOException If API call fails
      */
-    public JsonNode deleteGeofence(int geofenceId, String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/delete/" + geofenceId;
-        String payload = String.format("{\"mobile\":\"%s\"}", mobile);
-        logger.infof("Deleting geofence with ID %d for mobile %s", geofenceId, mobile);
-        return deleteRequest(url, payload);
+    public JsonNode deleteGeofence(String orgId, int geofenceId) throws IOException, InterruptedException {
+        String url = baseUrl + "/organization/" + orgId + "/delete/geo-fence/" + geofenceId;
+        logger.infof("Deleting geofence %d for org %s", geofenceId, orgId);
+        return deleteRequest(url, "{}");
     }
 
+    // -----------------------------------------------------------------
+    // User geofence assignment endpoints
+    // -----------------------------------------------------------------
+
     /**
-     * Get assigned geofences for a mobile number
-     * 
-     * @param mobile Mobile number to retrieve assigned geofences for
+     * Get geofences assigned to a user
+     *
+     * @param userId iVALT user ID
      * @return JSON response containing list of assigned geofences
      * @throws IOException If API call fails
      */
-    public JsonNode getAssignedGeofences(String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/assigned-list";
-        String payload = String.format("{\"mobile\":\"%s\"}", mobile);
-        logger.debugf("Getting assigned geofences for mobile %s", mobile);
-        return postRequest(url, payload);
+    public JsonNode getUserGeofences(String userId) throws IOException, InterruptedException {
+        String url = baseUrl + "/user/" + userId + "/geofences";
+        logger.debugf("Getting geofences for user %s", userId);
+        return getRequest(url);
     }
 
     /**
-     * Assign geofence to user
-     * 
-     * @param jsonPayload JSON payload containing assignment details
-     * @return JSON response confirming assignment
+     * Assign geofences to a user
+     *
+     * @param userId iVALT user ID
+     * @param jsonPayload JSON payload containing orgGeoFence_ids array
+     * @return JSON response with updated assignment list
      * @throws IOException If API call fails
      */
-    public JsonNode assignGeofence(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/assign";
-        logger.infof("Assigning geofence to user");
+    public JsonNode updateUserGeofences(String userId, String jsonPayload) throws IOException, InterruptedException {
+        String url = baseUrl + "/user/" + userId + "/geofences/update";
+        logger.infof("Updating geofence assignments for user %s", userId);
+        return putRequest(url, jsonPayload);
+    }
+
+    // -----------------------------------------------------------------
+    // Timeslot endpoints (org-level)
+    // -----------------------------------------------------------------
+
+    /**
+     * Get all timeslots for an organization
+     *
+     * @param orgId Organization ID
+     * @return JSON response containing list of timeslots
+     * @throws IOException If API call fails
+     */
+    public JsonNode getTimeslots(String orgId) throws IOException, InterruptedException {
+        String url = baseUrl + "/organization/" + orgId + "/timeslots";
+        logger.debugf("Getting timeslots for org %s", orgId);
+        return getRequest(url);
+    }
+
+    /**
+     * Create a new timeslot for an organization
+     *
+     * @param orgId Organization ID
+     * @param jsonPayload JSON payload containing timeslot details
+     * @return JSON response with created timeslot details
+     * @throws IOException If API call fails
+     */
+    public JsonNode createTimeslot(String orgId, String jsonPayload) throws IOException, InterruptedException {
+        String url = baseUrl + "/organization/" + orgId + "/timeslots/add";
+        logger.infof("Creating new timeslot for org %s", orgId);
         return postRequest(url, jsonPayload);
     }
 
     /**
-     * Remove geofence assignment from user
-     * 
-     * @param jsonPayload JSON payload containing assignment details to remove
-     * @return JSON response confirming removal
+     * Update an existing timeslot
+     *
+     * @param timeslotId ID of the timeslot to update
+     * @param jsonPayload JSON payload containing updated timeslot details
+     * @return JSON response with updated timeslot details
      * @throws IOException If API call fails
      */
-    public JsonNode removeGeofenceAssignment(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/geofence/assigned-delete";
-        logger.infof("Removing geofence assignment from user");
-        return deleteRequest(url, jsonPayload);
+    public JsonNode updateTimeslot(int timeslotId, String jsonPayload) throws IOException, InterruptedException {
+        String url = baseUrl + "/timeslot/" + timeslotId + "/update";
+        logger.infof("Updating timeslot %d", timeslotId);
+        return putRequest(url, jsonPayload);
     }
 
     /**
-     * Get active time windows for a mobile number
-     * 
-     * @param mobile Mobile number to retrieve time windows for
-     * @param limit Maximum number of results to return
-     * @param offset Number of results to skip
-     * @return JSON response containing list of active time windows
-     * @throws IOException If API call fails
-     */
-    public JsonNode getActiveTimeWindows(String mobile, int limit, int offset) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/active-list";
-        String payload = String.format("{\"mobile\":\"%s\",\"limit\":%d,\"offset\":%d}", mobile, limit, offset);
-        logger.debugf("Getting active time windows for mobile %s with limit %d and offset %d", mobile, limit, offset);
-        return postRequest(url, payload);
-    }
-
-    /**
-     * Create a new time window
-     * 
-     * @param jsonPayload JSON payload containing time window details
-     * @return JSON response with created time window details
-     * @throws IOException If API call fails
-     */
-    public JsonNode createTimeWindow(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/create";
-        logger.infof("Creating new time window");
-        return postRequest(url, jsonPayload);
-    }
-
-    /**
-     * Update an existing time window
-     * 
-     * @param timewindowId ID of the time window to update
-     * @param jsonPayload JSON payload containing updated time window details
-     * @return JSON response with updated time window details
-     * @throws IOException If API call fails
-     */
-    public JsonNode updateTimeWindow(int timewindowId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/update/" + timewindowId;
-        logger.infof("Updating time window with ID %d", timewindowId);
-        return postRequest(url, jsonPayload);
-    }
-
-    /**
-     * Delete a time window
-     * 
-     * @param timewindowId ID of the time window to delete
-     * @param mobile Mobile number for context
+     * Delete a timeslot
+     *
+     * @param timeslotId ID of the timeslot to delete
      * @return JSON response confirming deletion
      * @throws IOException If API call fails
      */
-    public JsonNode deleteTimeWindow(int timewindowId, String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/delete/" + timewindowId;
-        String payload = String.format("{\"mobile\":\"%s\"}", mobile);
-        logger.infof("Deleting time window with ID %d for mobile %s", timewindowId, mobile);
-        return deleteRequest(url, payload);
+    public JsonNode deleteTimeslot(int timeslotId) throws IOException, InterruptedException {
+        String url = baseUrl + "/timeslot/" + timeslotId + "/delete";
+        logger.infof("Deleting timeslot %d", timeslotId);
+        return deleteRequest(url, "{}");
+    }
+
+    // -----------------------------------------------------------------
+    // User timeslot assignment endpoints
+    // -----------------------------------------------------------------
+
+    /**
+     * Get timeslots assigned to a user
+     *
+     * @param userId iVALT user ID
+     * @return JSON response containing list of assigned timeslots
+     * @throws IOException If API call fails
+     */
+    public JsonNode getUserTimeslots(String userId) throws IOException, InterruptedException {
+        String url = baseUrl + "/user/" + userId + "/timeslots";
+        logger.debugf("Getting timeslots for user %s", userId);
+        return getRequest(url);
     }
 
     /**
-     * Get assigned time windows for a mobile number
-     * 
-     * @param mobile Mobile number to retrieve assigned time windows for
-     * @return JSON response containing list of assigned time windows
+     * Assign timeslots to a user
+     *
+     * @param userId iVALT user ID
+     * @param jsonPayload JSON payload containing timeslot_ids array
+     * @return JSON response with updated assignment list
      * @throws IOException If API call fails
      */
-    public JsonNode getAssignedTimeWindows(String mobile) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/assigned-list";
-        String payload = String.format("{\"mobile\":\"%s\"}", mobile);
-        logger.debugf("Getting assigned time windows for mobile %s", mobile);
-        return postRequest(url, payload);
-    }
-
-    /**
-     * Assign time window to user
-     * 
-     * @param jsonPayload JSON payload containing assignment details
-     * @return JSON response confirming assignment
-     * @throws IOException If API call fails
-     */
-    public JsonNode assignTimeWindow(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/assign";
-        logger.infof("Assigning time window to user");
-        return postRequest(url, jsonPayload);
-    }
-
-    /**
-     * Remove time window assignment from user
-     * 
-     * @param jsonPayload JSON payload containing assignment details to remove
-     * @return JSON response confirming removal
-     * @throws IOException If API call fails
-     */
-    public JsonNode removeTimeWindowAssignment(String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/admin/public/api/keyclockidp/timewindow/assigned-delete";
-        logger.infof("Removing time window assignment from user");
-        return deleteRequest(url, jsonPayload);
+    public JsonNode updateUserTimeslots(String userId, String jsonPayload) throws IOException, InterruptedException {
+        String url = baseUrl + "/user/" + userId + "/timeslots/update";
+        logger.infof("Updating timeslot assignments for user %s", userId);
+        return putRequest(url, jsonPayload);
     }
 }

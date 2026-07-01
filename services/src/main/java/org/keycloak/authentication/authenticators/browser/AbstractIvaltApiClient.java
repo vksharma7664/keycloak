@@ -101,8 +101,69 @@ public abstract class AbstractIvaltApiClient {
     }
 
     /**
+     * Generic GET request method
+     *
+     * @param url API endpoint URL
+     * @return JSON response from API
+     * @throws IOException If API call fails
+     */
+    protected JsonNode getRequest(String url) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("x-api-key", apiKey)
+                .timeout(Duration.ofMillis(timeout))
+                .GET()
+                .build();
+
+        logger.debugf("iVALT API GET request to %s", url);
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            logger.debugf("iVALT API GET request successful to %s", url);
+            return objectMapper.readTree(response.body());
+        } else {
+            logger.errorf("iVALT API request failed. Status: %d, Response: %s",
+                    response.statusCode(), response.body());
+            throw new IOException("iVALT API request failed: HTTP " + response.statusCode());
+        }
+    }
+
+    /**
+     * Generic PUT request method
+     *
+     * @param url API endpoint URL
+     * @param payload JSON payload to send
+     * @return JSON response from API
+     * @throws IOException If API call fails
+     */
+    protected JsonNode putRequest(String url, String payload) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("x-api-key", apiKey)
+                .timeout(Duration.ofMillis(timeout))
+                .PUT(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        logger.debugf("iVALT API PUT request to %s", url);
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200 || response.statusCode() == 201) {
+            logger.debugf("iVALT API PUT request successful to %s", url);
+            return objectMapper.readTree(response.body());
+        } else {
+            logger.errorf("iVALT API request failed. Status: %d, Response: %s",
+                    response.statusCode(), response.body());
+            throw new IOException("iVALT API request failed: HTTP " + response.statusCode());
+        }
+    }
+
+    /**
      * Generic DELETE request method
-     * 
+     *
      * @param url API endpoint URL
      * @param payload JSON payload to send
      * @return JSON response from API
