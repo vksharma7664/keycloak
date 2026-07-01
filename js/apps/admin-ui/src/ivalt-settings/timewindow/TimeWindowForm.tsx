@@ -10,7 +10,6 @@ import {
   ModalVariant,
   Form,
   FormGroup,
-  TextInput,
   TimePicker,
   Checkbox,
   Button,
@@ -45,7 +44,6 @@ export default function TimeWindowForm({
   onSave,
 }: TimeWindowFormProps) {
   const keyclockidpClient = useKeyclockidpClient();
-  const [name, setName] = useState(timeWindow?.name || "");
   const [startTime, setStartTime] = useState(timeWindow?.start_time || "");
   const [endTime, setEndTime] = useState(timeWindow?.end_time || "");
   const [timezone, setTimezone] = useState(timeWindow?.timezone?.[0] || "UTC");
@@ -65,10 +63,6 @@ export default function TimeWindowForm({
   };
 
   const handleSubmit = async () => {
-    if (!name) {
-      setError("Name is required");
-      return;
-    }
     if (!startTime) {
       setError("Start time is required");
       return;
@@ -83,13 +77,12 @@ export default function TimeWindowForm({
     try {
       if (timeWindow) {
         const request: TimeWindowUpdateRequest = {
-          name,
           start_time: startTime,
           end_time: endTime,
           timezone: [timezone],
           status: isActive,
         };
-        const response = await keyclockidpClient.updateTimeWindow(
+        const response = await keyclockidpClient.updateTimeslot(
           timeWindow.id,
           request,
         );
@@ -100,13 +93,12 @@ export default function TimeWindowForm({
         }
       } else {
         const request: TimeWindowCreateRequest = {
-          name,
           start_time: startTime,
           end_time: endTime,
           timezone: [timezone],
           status: isActive,
         };
-        const response = await keyclockidpClient.createTimeWindow(request);
+        const response = await keyclockidpClient.createTimeslot(request);
         if (response.success) {
           onSave();
         } else {
@@ -129,13 +121,6 @@ export default function TimeWindowForm({
     >
       {error && <Alert variant="danger" isInline title={error} />}
       <Form isHorizontal>
-        <FormGroup label="Name" fieldId="name" isRequired>
-          <TextInput
-            id="name"
-            value={name}
-            onChange={(_, value) => setName(value)}
-          />
-        </FormGroup>
         <FormGroup label="Start Time" fieldId="startTime" isRequired>
           <TimePicker
             id="startTime"

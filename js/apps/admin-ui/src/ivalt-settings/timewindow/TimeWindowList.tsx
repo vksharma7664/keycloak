@@ -31,7 +31,7 @@ export default function TimeWindowList() {
   const loadTimeWindows = async () => {
     setLoading(true);
     setError(null);
-    const response = await keyclockidpClient.getActiveTimeWindows();
+    const response = await keyclockidpClient.getTimeslots();
     if (response.success && response.data) {
       setTimeWindows(response.data.data);
     } else {
@@ -51,7 +51,7 @@ export default function TimeWindowList() {
   };
 
   const handleDelete = async (timeWindowId: number) => {
-    const response = await keyclockidpClient.deleteTimeWindow(timeWindowId);
+    const response = await keyclockidpClient.deleteTimeslot(timeWindowId);
     if (response.success) {
       setSuccess("Time window deleted successfully");
       void loadTimeWindows();

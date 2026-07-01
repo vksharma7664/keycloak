@@ -29,7 +29,7 @@ export default function GeofenceList() {
   const loadGeofences = async () => {
     setLoading(true);
     setError(null);
-    const response = await keyclockidpClient.getActiveGeofences();
+    const response = await keyclockidpClient.getGeofences();
     if (response.success && response.data) {
       setGeofences(response.data.data);
     } else {
