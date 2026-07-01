@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
-  EmptyState,
-  EmptyStateBody,
   FormSelect,
   FormSelectOption,
   PageSection,
@@ -13,11 +11,7 @@ import {
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { KeycloakSpinner, useAlerts } from "@keycloak/keycloak-ui-shared";
-import { useAdminClient } from "../admin-client";
-import { useParams } from "../utils/useParams";
-import type { UserParams } from "./routes/User";
 import { useKeyclockidpClient } from "../ivalt-settings/api/keyclockidpClient";
-import { getIvaltUserMobile } from "../ivalt-settings/api/userMobile";
 import type { TimeWindow } from "../ivalt-settings/api/types";
 
 function asArray<T>(data: unknown): T[] {
@@ -33,46 +27,32 @@ function asArray<T>(data: unknown): T[] {
 }
 
 export default function UserTimeWindow() {
-  const { adminClient } = useAdminClient();
   const { t } = useTranslation();
   const { addAlert, addError } = useAlerts();
-  const { id: userId } = useParams<UserParams>();
   const keyclockidpClient = useKeyclockidpClient();
 
   const [loading, setLoading] = useState(true);
-  const [userMobile, setUserMobile] = useState("");
   const [assigned, setAssigned] = useState<TimeWindow[]>([]);
   const [available, setAvailable] = useState<TimeWindow[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const refresh = useCallback(
-    async (mobile: string) => {
-      const [assignedRes, activeRes] = await Promise.all([
-        keyclockidpClient.getAssignedTimeWindows(mobile),
-        keyclockidpClient.getActiveTimeWindows(100, 0),
-      ]);
-      setAssigned(
-        assignedRes.success ? asArray<TimeWindow>(assignedRes.data) : [],
-      );
-      setAvailable(
-        activeRes.success ? asArray<TimeWindow>(activeRes.data) : [],
-      );
-    },
-    [keyclockidpClient],
-  );
+  const refresh = useCallback(async () => {
+    const [assignedRes, activeRes] = await Promise.all([
+      keyclockidpClient.getUserTimeslots(),
+      keyclockidpClient.getTimeslots(),
+    ]);
+    setAssigned(
+      assignedRes.success ? asArray<TimeWindow>(assignedRes.data) : [],
+    );
+    setAvailable(activeRes.success ? asArray<TimeWindow>(activeRes.data) : []);
+  }, [keyclockidpClient]);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const mobile = userId
-          ? await getIvaltUserMobile(adminClient, userId)
-          : "";
-        setUserMobile(mobile);
-        if (mobile) {
-          await refresh(mobile);
-        }
+        await refresh();
       } catch (error) {
         addError("timeWindowFetchError", error);
       } finally {
@@ -80,7 +60,7 @@ export default function UserTimeWindow() {
       }
     };
     void fetchData();
-  }, [userId, adminClient, addError, refresh]);
+  }, [addError, refresh]);
 
   const assignableOptions = useMemo(() => {
     const assignedIds = new Set(assigned.map((w) => w.id));
@@ -90,14 +70,14 @@ export default function UserTimeWindow() {
   const handleAssign = async () => {
     if (!selectedId) return;
     setBusy(true);
-    const response = await keyclockidpClient.assignTimeWindow({
-      user_mobile: userMobile,
-      timewindow_id: Number(selectedId),
+    const newAssignedIds = [...assigned.map((w) => w.id), Number(selectedId)];
+    const response = await keyclockidpClient.updateUserTimeslots({
+      timeslot_ids: newAssignedIds,
     });
     if (response.success) {
       addAlert(t("timeWindowAssigned"));
       setSelectedId("");
-      await refresh(userMobile);
+      await refresh();
     } else {
       addError("timeWindowAssignError", response.error);
     }
@@ -106,13 +86,15 @@ export default function UserTimeWindow() {
 
   const handleRemove = async (timewindowId: number) => {
     setBusy(true);
-    const response = await keyclockidpClient.removeTimeWindowAssignment({
-      user_mobile: userMobile,
-      timewindow_id: timewindowId,
+    const newAssignedIds = assigned
+      .filter((w) => w.id !== timewindowId)
+      .map((w) => w.id);
+    const response = await keyclockidpClient.updateUserTimeslots({
+      timeslot_ids: newAssignedIds,
     });
     if (response.success) {
       addAlert(t("timeWindowUnassigned"));
-      await refresh(userMobile);
+      await refresh();
     } else {
       addError("timeWindowUnassignError", response.error);
     }
@@ -121,16 +103,6 @@ export default function UserTimeWindow() {
 
   if (loading) {
     return <KeycloakSpinner />;
-  }
-
-  if (!userMobile) {
-    return (
-      <PageSection variant="light">
-        <EmptyState>
-          <EmptyStateBody>{t("ivaltNoUserMobile")}</EmptyStateBody>
-        </EmptyState>
-      </PageSection>
-    );
   }
 
   return (

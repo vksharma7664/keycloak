@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
-  EmptyState,
-  EmptyStateBody,
   FormSelect,
   FormSelectOption,
   PageSection,
@@ -13,11 +11,7 @@ import {
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { KeycloakSpinner, useAlerts } from "@keycloak/keycloak-ui-shared";
-import { useAdminClient } from "../admin-client";
-import { useParams } from "../utils/useParams";
-import type { UserParams } from "./routes/User";
 import { useKeyclockidpClient } from "../ivalt-settings/api/keyclockidpClient";
-import { getIvaltUserMobile } from "../ivalt-settings/api/userMobile";
 import type { Geofence } from "../ivalt-settings/api/types";
 
 function asArray<T>(data: unknown): T[] {
@@ -33,44 +27,30 @@ function asArray<T>(data: unknown): T[] {
 }
 
 export default function UserGeofence() {
-  const { adminClient } = useAdminClient();
   const { t } = useTranslation();
   const { addAlert, addError } = useAlerts();
-  const { id: userId } = useParams<UserParams>();
   const keyclockidpClient = useKeyclockidpClient();
 
   const [loading, setLoading] = useState(true);
-  const [userMobile, setUserMobile] = useState("");
   const [assigned, setAssigned] = useState<Geofence[]>([]);
   const [available, setAvailable] = useState<Geofence[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const refresh = useCallback(
-    async (mobile: string) => {
-      const [assignedRes, activeRes] = await Promise.all([
-        keyclockidpClient.getAssignedGeofences(mobile),
-        keyclockidpClient.getActiveGeofences(100, 0),
-      ]);
-      setAssigned(
-        assignedRes.success ? asArray<Geofence>(assignedRes.data) : [],
-      );
-      setAvailable(activeRes.success ? asArray<Geofence>(activeRes.data) : []);
-    },
-    [keyclockidpClient],
-  );
+  const refresh = useCallback(async () => {
+    const [assignedRes, activeRes] = await Promise.all([
+      keyclockidpClient.getUserGeofences(),
+      keyclockidpClient.getGeofences(),
+    ]);
+    setAssigned(assignedRes.success ? asArray<Geofence>(assignedRes.data) : []);
+    setAvailable(activeRes.success ? asArray<Geofence>(activeRes.data) : []);
+  }, [keyclockidpClient]);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const mobile = userId
-          ? await getIvaltUserMobile(adminClient, userId)
-          : "";
-        setUserMobile(mobile);
-        if (mobile) {
-          await refresh(mobile);
-        }
+        await refresh();
       } catch (error) {
         addError("geofenceFetchError", error);
       } finally {
@@ -78,7 +58,7 @@ export default function UserGeofence() {
       }
     };
     void fetchData();
-  }, [userId, adminClient, addError, refresh]);
+  }, [addError, refresh]);
 
   const assignableOptions = useMemo(() => {
     const assignedIds = new Set(assigned.map((g) => g.id));
@@ -88,14 +68,14 @@ export default function UserGeofence() {
   const handleAssign = async () => {
     if (!selectedId) return;
     setBusy(true);
-    const response = await keyclockidpClient.assignGeofence({
-      user_mobile: userMobile,
-      geofence_id: Number(selectedId),
+    const newAssignedIds = [...assigned.map((g) => g.id), Number(selectedId)];
+    const response = await keyclockidpClient.updateUserGeofences({
+      orgGeoFence_ids: newAssignedIds,
     });
     if (response.success) {
       addAlert(t("geofenceAssigned"));
       setSelectedId("");
-      await refresh(userMobile);
+      await refresh();
     } else {
       addError("geofenceAssignError", response.error);
     }
@@ -104,13 +84,15 @@ export default function UserGeofence() {
 
   const handleRemove = async (geofenceId: number) => {
     setBusy(true);
-    const response = await keyclockidpClient.removeGeofenceAssignment({
-      user_mobile: userMobile,
-      geofence_id: geofenceId,
+    const newAssignedIds = assigned
+      .filter((g) => g.id !== geofenceId)
+      .map((g) => g.id);
+    const response = await keyclockidpClient.updateUserGeofences({
+      orgGeoFence_ids: newAssignedIds,
     });
     if (response.success) {
       addAlert(t("geofenceUnassigned"));
-      await refresh(userMobile);
+      await refresh();
     } else {
       addError("geofenceUnassignError", response.error);
     }
@@ -119,16 +101,6 @@ export default function UserGeofence() {
 
   if (loading) {
     return <KeycloakSpinner />;
-  }
-
-  if (!userMobile) {
-    return (
-      <PageSection variant="light">
-        <EmptyState>
-          <EmptyStateBody>{t("ivaltNoUserMobile")}</EmptyStateBody>
-        </EmptyState>
-      </PageSection>
-    );
   }
 
   return (
