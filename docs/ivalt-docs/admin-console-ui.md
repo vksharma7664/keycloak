@@ -1,8 +1,16 @@
 # Admin Console UI
 
+This document describes the React-based admin console interface for managing iVALT settings, geofences, time windows, and user assignments. It covers the navigation structure, route registration, config page, geofence and time window management, and user detail tabs.
+
+---
+
 ## Navigation Structure
 
-Three iVALT-related items appear in the admin console left navigation:
+Three iVALT-related items appear in the Keycloak admin console's left navigation panel, distributed across two groups.
+
+In the **Manage** group (which contains operational settings like Events), two items are added: **Geo Fences** (`/:realm/geofences`) and **Time Windows** (`/:realm/time-windows`). These allow administrators to create, edit, and delete location-based and time-based policies.
+
+In the **Configure** group (which contains structural settings like Realm Settings and Authentication), one item is added: **iVALT Settings** (`/:realm/ivalt-settings`). This is where administrators manage the organization-level credentials needed to communicate with the iVALT Cloud API.
 
 ```mermaid
 graph TB
@@ -23,6 +31,8 @@ graph TB
 
 ### Nav Registration (`PageNav.tsx`)
 
+The navigation items are registered in `PageNav.tsx` using the `<LeftNav>` component. Each entry specifies the display title (referenced from the i18n messages file) and the route path.
+
 ```typescript
 // Manage group (after Events)
 <LeftNav title="timeWindows" path="/time-windows" />
@@ -32,7 +42,13 @@ graph TB
 <LeftNav title="ivaltSettings" path="/ivalt-settings" />
 ```
 
+---
+
 ## Route Structure
+
+Each navigation item maps to a route registered in `src/routes.tsx`. These routes define the URL pattern, the loader function, and the React component to render.
+
+The `/:realm/ivalt-settings` route renders `IvaltConfigSection`, which contains the org-level configuration form. The `/:realm/geofences` route renders `GeoFenceSection`, which contains the geofence list, table, create/edit form, and the Google Map picker. The `/:realm/time-windows` route renders `TimeWindowSection`, which contains the time window list, table, and create/edit form.
 
 ```mermaid
 graph LR
@@ -60,9 +76,13 @@ graph LR
     end
 ```
 
+---
+
 ## iVALT Settings Page (`IvaltConfigSection`)
 
-The config form stores org credentials as realm attributes:
+The iVALT Settings page is where administrators configure the organization's credentials for the iVALT Cloud API. These values are stored as realm attributes in Keycloak's database, making them specific to each realm.
+
+Four fields are configurable:
 
 | Field | Realm Attribute | Notes |
 |-------|-----------------|-------|
@@ -71,7 +91,9 @@ The config form stores org credentials as realm attributes:
 | API Base URL | `ivalt.api.base.url` | Default: `https://api.ivalt.com` |
 | API Key | `ivalt.api.key` | Password field; never echoed back |
 
-**Flow:**
+The **API Key** is write-only — when the config is fetched, the backend returns `apiKeyConfigured: boolean` rather than the key value itself. This means the key can only be set or overwritten, never read back.
+
+**Flow:** When the admin opens the iVALT Settings page, the `IvaltConfigSection` component calls `KeyClockIDPClient.getConfig()`, which sends a GET request to the backend. The backend reads the realm attributes and returns them (with the API key masked). The admin edits the fields and clicks Save, triggering a PUT request to the backend which updates the realm attributes.
 
 ```mermaid
 sequenceDiagram
@@ -94,7 +116,15 @@ sequenceDiagram
     Client-->>UI: Success alert
 ```
 
+---
+
 ## Geofence Management
+
+The geofence management page allows administrators to create, view, edit, and delete geofences. A geofence is defined by a name, a center point (latitude/longitude selected on a Google Map), and a radius in meters.
+
+When the admin opens the Geo Fences page, `GeofenceList` fetches the paginated list from the backend, which proxies the request to the iVALT Cloud API's KeyClockIDP endpoint. The response is transformed from the iVALT format to the frontend format before rendering in a table.
+
+Creating a geofence opens a modal (`GeofenceForm`) that includes the `GoogleMapPicker` component — an interactive Google Map where the admin clicks to set the center point and adjusts a radius slider. On submit, the data is sent to the backend, which creates the geofence via the iVALT API and returns the result.
 
 ```mermaid
 sequenceDiagram
@@ -124,9 +154,15 @@ sequenceDiagram
     Client-->>GF: Refresh list
 ```
 
+---
+
 ## User Detail Tabs
 
-Each user page in the admin console has **GeoFence** and **TimeWindow** tabs for assigning/unassigning restrictions:
+Each user detail page in the admin console (`/:realm/users/{id}`) includes two additional tabs: **GeoFence** and **TimeWindow**. These tabs allow administrators to assign or unassign geofences and time windows to individual users.
+
+The **GeoFence Tab** (`UserGeofence`) shows a dropdown of available geofences (all geofences created for the org, minus ones already assigned to this user) with an Assign button, and a list of currently assigned geofences with Remove buttons.
+
+The **TimeWindow Tab** (`UserTimeWindow`) works identically — a dropdown of available time windows, an Assign button, and an assigned list with Remove buttons.
 
 ```mermaid
 graph TB
@@ -152,7 +188,7 @@ graph TB
     end
 ```
 
-**Assign/Unassign flow:**
+**Assign/Unassign flow:** When the admin opens a user's GeoFence tab, the tab fetches both the currently assigned geofences and the full list of available geofences. The admin selects a geofence from the dropdown and clicks Assign, which sends a PUT request with the updated assignment list. The backend proxies this to the iVALT API. The same flow applies to time windows.
 
 ```mermaid
 sequenceDiagram
@@ -184,6 +220,8 @@ sequenceDiagram
     Backend-->>Client: Success
     Client-->>UG: Refresh
 ```
+
+---
 
 ## Key Files
 
