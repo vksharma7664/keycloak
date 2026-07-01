@@ -52,6 +52,8 @@ public class IvaltSettingsResource {
 
     /** Realm attribute keys for iVALT configuration. */
     public static final String ATTR_ORG_MOBILE = "ivalt.org.mobile";
+    public static final String ATTR_ORG_ID = "ivalt.org.id";
+    public static final String ATTR_USER_ID = "ivalt.user.id";
     public static final String ATTR_API_KEY = "ivalt.api.key";
     public static final String ATTR_API_BASE_URL = "ivalt.api.base.url";
 
@@ -92,6 +94,8 @@ public class IvaltSettingsResource {
         auth.realm().requireViewRealm();
         ObjectNode data = MAPPER.createObjectNode();
         data.put("orgMobile", orEmpty(realm.getAttribute(ATTR_ORG_MOBILE)));
+        data.put("orgId", orEmpty(realm.getAttribute(ATTR_ORG_ID)));
+        data.put("userId", orEmpty(realm.getAttribute(ATTR_USER_ID)));
         data.put("apiBaseUrl", getBaseUrl());
         data.put("apiKeyConfigured", !orEmpty(realm.getAttribute(ATTR_API_KEY)).isEmpty());
 
@@ -117,6 +121,12 @@ public class IvaltSettingsResource {
             if (node.hasNonNull("orgMobile")) {
                 realm.setAttribute(ATTR_ORG_MOBILE, node.get("orgMobile").asText().trim());
             }
+            if (node.hasNonNull("orgId")) {
+                realm.setAttribute(ATTR_ORG_ID, node.get("orgId").asText().trim());
+            }
+            if (node.hasNonNull("userId")) {
+                realm.setAttribute(ATTR_USER_ID, node.get("userId").asText().trim());
+            }
             if (node.hasNonNull("apiBaseUrl")) {
                 String baseUrl = node.get("apiBaseUrl").asText().trim();
                 realm.setAttribute(ATTR_API_BASE_URL, baseUrl.isEmpty() ? DEFAULT_API_BASE_URL : baseUrl);
@@ -140,31 +150,28 @@ public class IvaltSettingsResource {
     // ---------------------------------------------------------------------
 
     /**
-     * Get active geofences for a mobile number (defaults to the organization mobile).
+     * Get all geofences for the configured organization.
      */
     @GET
     @Path("geofences")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getActiveGeofences(
-            @QueryParam("mobile") String mobile,
-            @QueryParam("limit") @DefaultValue("10") int limit,
-            @QueryParam("offset") @DefaultValue("0") int offset) {
+    public Response getGeofences() {
         auth.realm().requireViewRealm();
-        String resolved = resolveMobile(mobile);
-        if (resolved.isEmpty()) {
-            return missingMobile();
+        String orgId = getOrgId();
+        if (orgId.isEmpty()) {
+            return missingConfig("iVALT organization ID is not configured. Set it on the iVALT Settings page.");
         }
         try {
-            var result = apiClient.getActiveGeofences(resolved, limit, offset);
+            var result = apiClient.getGeofences(orgId);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.error("Failed to get active geofences", e);
-            return serverError("Failed to get active geofences");
+            logger.error("Failed to get geofences", e);
+            return serverError("Failed to get geofences");
         }
     }
 
     /**
-     * Create a new geofence.
+     * Create a new geofence for the configured organization.
      */
     @POST
     @Path("geofences")
@@ -172,8 +179,12 @@ public class IvaltSettingsResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response createGeofence(String jsonPayload) {
         auth.realm().requireManageRealm();
+        String orgId = getOrgId();
+        if (orgId.isEmpty()) {
+            return missingConfig("iVALT organization ID is not configured.");
+        }
         try {
-            var result = apiClient.createGeofence(withOrgMobile(jsonPayload));
+            var result = apiClient.createGeofence(orgId, jsonPayload);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.error("Failed to create geofence", e);
@@ -190,8 +201,12 @@ public class IvaltSettingsResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response updateGeofence(@PathParam("id") int geofenceId, String jsonPayload) {
         auth.realm().requireManageRealm();
+        String orgId = getOrgId();
+        if (orgId.isEmpty()) {
+            return missingConfig("iVALT organization ID is not configured.");
+        }
         try {
-            var result = apiClient.updateGeofence(geofenceId, withOrgMobile(jsonPayload));
+            var result = apiClient.updateGeofence(orgId, geofenceId, jsonPayload);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.errorf(e, "Failed to update geofence: %d", geofenceId);
@@ -205,14 +220,14 @@ public class IvaltSettingsResource {
     @DELETE
     @Path("geofences/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response deleteGeofence(@PathParam("id") int geofenceId, @QueryParam("mobile") String mobile) {
+    public Response deleteGeofence(@PathParam("id") int geofenceId) {
         auth.realm().requireManageRealm();
-        String resolved = resolveMobile(mobile);
-        if (resolved.isEmpty()) {
-            return missingMobile();
+        String orgId = getOrgId();
+        if (orgId.isEmpty()) {
+            return missingConfig("iVALT organization ID is not configured.");
         }
         try {
-            var result = apiClient.deleteGeofence(geofenceId, resolved);
+            var result = apiClient.deleteGeofence(orgId, geofenceId);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
             logger.errorf(e, "Failed to delete geofence: %d", geofenceId);
@@ -221,201 +236,174 @@ public class IvaltSettingsResource {
     }
 
     /**
-     * Get assigned geofences for a user's mobile number.
+     * Get geofences assigned to the configured user.
      */
     @GET
     @Path("geofences/assigned")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAssignedGeofences(@QueryParam("mobile") String mobile) {
+    public Response getUserGeofences() {
         auth.realm().requireViewRealm();
-        if (isBlank(mobile)) {
-            return missingMobile();
+        String userId = getUserId();
+        if (userId.isEmpty()) {
+            return missingConfig("iVALT user ID is not configured. Set it on the iVALT Settings page.");
         }
         try {
-            var result = apiClient.getAssignedGeofences(mobile);
+            var result = apiClient.getUserGeofences(userId);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.error("Failed to get assigned geofences", e);
-            return serverError("Failed to get assigned geofences");
+            logger.error("Failed to get user geofences", e);
+            return serverError("Failed to get user geofences");
         }
     }
 
     /**
-     * Assign geofence to user.
+     * Assign geofences to the configured user.
      */
-    @POST
+    @PUT
     @Path("geofences/assign")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response assignGeofence(String jsonPayload) {
+    public Response updateUserGeofences(String jsonPayload) {
         auth.realm().requireManageRealm();
+        String userId = getUserId();
+        if (userId.isEmpty()) {
+            return missingConfig("iVALT user ID is not configured.");
+        }
         try {
-            var result = apiClient.assignGeofence(withOrgMobile(jsonPayload));
+            var result = apiClient.updateUserGeofences(userId, jsonPayload);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.error("Failed to assign geofence", e);
-            return serverError("Failed to assign geofence");
+            logger.error("Failed to update user geofence assignments", e);
+            return serverError("Failed to update user geofence assignments");
         }
     }
 
-    /**
-     * Remove geofence assignment from user.
-     */
-    @DELETE
-    @Path("geofences/assign")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response removeGeofenceAssignment(String jsonPayload) {
-        auth.realm().requireManageRealm();
-        try {
-            var result = apiClient.removeGeofenceAssignment(withOrgMobile(jsonPayload));
-            return Response.ok(result.toString()).build();
-        } catch (Exception e) {
-            logger.error("Failed to remove geofence assignment", e);
-            return serverError("Failed to remove geofence assignment");
-        }
-    }
 
     // ---------------------------------------------------------------------
     // Time window endpoints
     // ---------------------------------------------------------------------
 
     /**
-     * Get active time windows for a mobile number (defaults to the organization mobile).
+     * Get all timeslots for the configured organization.
      */
     @GET
     @Path("timewindows")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getActiveTimeWindows(
-            @QueryParam("mobile") String mobile,
-            @QueryParam("limit") @DefaultValue("10") int limit,
-            @QueryParam("offset") @DefaultValue("0") int offset) {
+    public Response getTimeslots() {
         auth.realm().requireViewRealm();
-        String resolved = resolveMobile(mobile);
-        if (resolved.isEmpty()) {
-            return missingMobile();
+        String orgId = getOrgId();
+        if (orgId.isEmpty()) {
+            return missingConfig("iVALT organization ID is not configured. Set it on the iVALT Settings page.");
         }
         try {
-            var result = apiClient.getActiveTimeWindows(resolved, limit, offset);
+            var result = apiClient.getTimeslots(orgId);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.error("Failed to get active time windows", e);
-            return serverError("Failed to get active time windows");
+            logger.error("Failed to get timeslots", e);
+            return serverError("Failed to get timeslots");
         }
     }
 
     /**
-     * Create a new time window.
+     * Create a new timeslot for the configured organization.
      */
     @POST
     @Path("timewindows")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response createTimeWindow(String jsonPayload) {
+    public Response createTimeslot(String jsonPayload) {
         auth.realm().requireManageRealm();
+        String orgId = getOrgId();
+        if (orgId.isEmpty()) {
+            return missingConfig("iVALT organization ID is not configured.");
+        }
         try {
-            var result = apiClient.createTimeWindow(withOrgMobile(jsonPayload));
+            var result = apiClient.createTimeslot(orgId, jsonPayload);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.error("Failed to create time window", e);
-            return serverError("Failed to create time window");
+            logger.error("Failed to create timeslot", e);
+            return serverError("Failed to create timeslot");
         }
     }
 
     /**
-     * Update an existing time window.
+     * Update an existing timeslot.
      */
     @PUT
     @Path("timewindows/{id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response updateTimeWindow(@PathParam("id") int timewindowId, String jsonPayload) {
+    public Response updateTimeslot(@PathParam("id") int timewindowId, String jsonPayload) {
         auth.realm().requireManageRealm();
         try {
-            var result = apiClient.updateTimeWindow(timewindowId, withOrgMobile(jsonPayload));
+            var result = apiClient.updateTimeslot(timewindowId, jsonPayload);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.errorf(e, "Failed to update time window: %d", timewindowId);
-            return serverError("Failed to update time window");
+            logger.errorf(e, "Failed to update timeslot: %d", timewindowId);
+            return serverError("Failed to update timeslot");
         }
     }
 
     /**
-     * Delete a time window.
+     * Delete a timeslot.
      */
     @DELETE
     @Path("timewindows/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response deleteTimeWindow(@PathParam("id") int timewindowId, @QueryParam("mobile") String mobile) {
+    public Response deleteTimeslot(@PathParam("id") int timewindowId) {
         auth.realm().requireManageRealm();
-        String resolved = resolveMobile(mobile);
-        if (resolved.isEmpty()) {
-            return missingMobile();
-        }
         try {
-            var result = apiClient.deleteTimeWindow(timewindowId, resolved);
+            var result = apiClient.deleteTimeslot(timewindowId);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.errorf(e, "Failed to delete time window: %d", timewindowId);
-            return serverError("Failed to delete time window");
+            logger.errorf(e, "Failed to delete timeslot: %d", timewindowId);
+            return serverError("Failed to delete timeslot");
         }
     }
 
     /**
-     * Get assigned time windows for a user's mobile number.
+     * Get timeslots assigned to the configured user.
      */
     @GET
     @Path("timewindows/assigned")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAssignedTimeWindows(@QueryParam("mobile") String mobile) {
+    public Response getUserTimeslots() {
         auth.realm().requireViewRealm();
-        if (isBlank(mobile)) {
-            return missingMobile();
+        String userId = getUserId();
+        if (userId.isEmpty()) {
+            return missingConfig("iVALT user ID is not configured. Set it on the iVALT Settings page.");
         }
         try {
-            var result = apiClient.getAssignedTimeWindows(mobile);
+            var result = apiClient.getUserTimeslots(userId);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.error("Failed to get assigned time windows", e);
-            return serverError("Failed to get assigned time windows");
+            logger.error("Failed to get user timeslots", e);
+            return serverError("Failed to get user timeslots");
         }
     }
 
     /**
-     * Assign time window to user.
+     * Assign timeslots to the configured user.
      */
-    @POST
+    @PUT
     @Path("timewindows/assign")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response assignTimeWindow(String jsonPayload) {
+    public Response updateUserTimeslots(String jsonPayload) {
         auth.realm().requireManageRealm();
+        String userId = getUserId();
+        if (userId.isEmpty()) {
+            return missingConfig("iVALT user ID is not configured.");
+        }
         try {
-            var result = apiClient.assignTimeWindow(withOrgMobile(jsonPayload));
+            var result = apiClient.updateUserTimeslots(userId, jsonPayload);
             return Response.ok(result.toString()).build();
         } catch (Exception e) {
-            logger.error("Failed to assign time window", e);
-            return serverError("Failed to assign time window");
+            logger.error("Failed to update user timeslot assignments", e);
+            return serverError("Failed to update user timeslot assignments");
         }
     }
 
-    /**
-     * Remove time window assignment from user.
-     */
-    @DELETE
-    @Path("timewindows/assign")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response removeTimeWindowAssignment(String jsonPayload) {
-        auth.realm().requireManageRealm();
-        try {
-            var result = apiClient.removeTimeWindowAssignment(withOrgMobile(jsonPayload));
-            return Response.ok(result.toString()).build();
-        } catch (Exception e) {
-            logger.error("Failed to remove time window assignment", e);
-            return serverError("Failed to remove time window assignment");
-        }
-    }
 
     // ---------------------------------------------------------------------
     // Helpers
@@ -426,31 +414,12 @@ public class IvaltSettingsResource {
         return isBlank(configured) ? DEFAULT_API_BASE_URL : configured.trim();
     }
 
-    private String getOrgMobile() {
-        return orEmpty(realm.getAttribute(ATTR_ORG_MOBILE)).trim();
+    private String getOrgId() {
+        return orEmpty(realm.getAttribute(ATTR_ORG_ID)).trim();
     }
 
-    /** Use the supplied mobile when present, otherwise fall back to the org mobile. */
-    private String resolveMobile(String mobile) {
-        return isBlank(mobile) ? getOrgMobile() : mobile.trim();
-    }
-
-    /** Inject the organization mobile into a JSON payload when it is missing or blank. */
-    private String withOrgMobile(String jsonPayload) {
-        try {
-            JsonNode node = MAPPER.readTree(jsonPayload);
-            if (!node.isObject()) {
-                return jsonPayload;
-            }
-            ObjectNode obj = (ObjectNode) node;
-            if (!obj.hasNonNull("mobile") || obj.get("mobile").asText().trim().isEmpty()) {
-                obj.put("mobile", getOrgMobile());
-            }
-            return obj.toString();
-        } catch (Exception e) {
-            logger.warn("Could not parse iVALT payload to inject org mobile; passing through", e);
-            return jsonPayload;
-        }
+    private String getUserId() {
+        return orEmpty(realm.getAttribute(ATTR_USER_ID)).trim();
     }
 
     private static boolean isBlank(String value) {
@@ -461,10 +430,10 @@ public class IvaltSettingsResource {
         return value == null ? "" : value;
     }
 
-    private static Response missingMobile() {
+    private static Response missingConfig(String message) {
         return Response.status(Response.Status.BAD_REQUEST)
                 .type(MediaType.APPLICATION_JSON)
-                .entity("{\"success\":false,\"error\":\"iVALT organization mobile is not configured. Set it on the iVALT Settings page.\"}")
+                .entity(String.format("{\"success\":false,\"error\":\"%s\"}", message))
                 .build();
     }
 
