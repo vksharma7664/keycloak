@@ -91,7 +91,6 @@ export interface ApiResponse<T> {
 }
 
 export interface IvaltConfig {
-  orgMobile: string;
   orgCode: string;
   userMobile: string;
   apiBaseUrl: string;
@@ -99,7 +98,6 @@ export interface IvaltConfig {
 }
 
 export interface IvaltConfigUpdateRequest {
-  orgMobile?: string;
   orgCode?: string;
   userMobile?: string;
   apiBaseUrl?: string;

@@ -23,7 +23,6 @@ export default function IvaltConfigSection() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [orgMobile, setOrgMobile] = useState("");
   const [orgCode, setOrgCode] = useState("");
   const [userMobile, setUserMobile] = useState("");
   const [apiBaseUrl, setApiBaseUrl] = useState("");
@@ -34,7 +33,6 @@ export default function IvaltConfigSection() {
     setLoading(true);
     const response = await keyclockidpClient.getConfig();
     if (response.success && response.data) {
-      setOrgMobile(response.data.orgMobile);
       setOrgCode(response.data.orgCode);
       setUserMobile(response.data.userMobile);
       setApiBaseUrl(response.data.apiBaseUrl);
@@ -53,7 +51,6 @@ export default function IvaltConfigSection() {
   const handleSave = async () => {
     setSaving(true);
     const response = await keyclockidpClient.updateConfig({
-      orgMobile,
       orgCode,
       userMobile,
       apiBaseUrl,
@@ -78,23 +75,6 @@ export default function IvaltConfigSection() {
           <KeycloakSpinner />
         ) : (
           <Form isHorizontal onSubmit={(e) => e.preventDefault()}>
-            <FormGroup
-              label={t("ivaltOrgMobile")}
-              fieldId="ivalt-org-mobile"
-              labelIcon={
-                <HelpItem
-                  helpText={t("ivaltOrgMobileHelp")}
-                  fieldLabelId="ivaltOrgMobile"
-                />
-              }
-            >
-              <TextInput
-                id="ivalt-org-mobile"
-                value={orgMobile}
-                placeholder="+1..."
-                onChange={(_, value) => setOrgMobile(value)}
-              />
-            </FormGroup>
             <FormGroup
               label={t("ivaltOrgCode")}
               fieldId="ivalt-org-code"

@@ -51,7 +51,6 @@ public class IvaltSettingsResource {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** Realm attribute keys for iVALT configuration. */
-    public static final String ATTR_ORG_MOBILE = "ivalt.org.mobile";
     public static final String ATTR_ORG_CODE = "ivalt.org.code";
     public static final String ATTR_USER_MOBILE = "ivalt.user.mobile";
     public static final String ATTR_API_KEY = "ivalt.api.key";
@@ -93,7 +92,6 @@ public class IvaltSettingsResource {
     public Response getConfig() {
         auth.realm().requireViewRealm();
         ObjectNode data = MAPPER.createObjectNode();
-        data.put("orgMobile", orEmpty(realm.getAttribute(ATTR_ORG_MOBILE)));
         data.put("orgCode", orEmpty(realm.getAttribute(ATTR_ORG_CODE)));
         data.put("userMobile", orEmpty(realm.getAttribute(ATTR_USER_MOBILE)));
         data.put("apiBaseUrl", getBaseUrl());
@@ -118,9 +116,6 @@ public class IvaltSettingsResource {
         try {
             JsonNode node = MAPPER.readTree(jsonPayload);
 
-            if (node.hasNonNull("orgMobile")) {
-                realm.setAttribute(ATTR_ORG_MOBILE, node.get("orgMobile").asText().trim());
-            }
             if (node.hasNonNull("orgCode")) {
                 realm.setAttribute(ATTR_ORG_CODE, node.get("orgCode").asText().trim());
             }
