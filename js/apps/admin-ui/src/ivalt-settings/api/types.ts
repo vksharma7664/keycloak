@@ -15,8 +15,6 @@ export interface Geofence {
 }
 
 export interface GeofenceCreateRequest {
-  // Resolved server-side from the organization mobile when omitted.
-  mobile?: string;
   name: string;
   latitude: number;
   longitude: number;
@@ -25,7 +23,6 @@ export interface GeofenceCreateRequest {
 }
 
 export interface GeofenceUpdateRequest {
-  mobile?: string;
   name?: string;
   latitude?: number;
   longitude?: number;
@@ -36,9 +33,7 @@ export interface GeofenceUpdateRequest {
 export interface GeofenceListResponse {
   success: boolean;
   data: Geofence[];
-  total: number;
-  limit: number;
-  offset: number;
+  message?: string;
 }
 
 export interface TimeWindow {
@@ -54,37 +49,28 @@ export interface TimeWindow {
 }
 
 export interface TimeWindowCreateRequest {
-  mobile?: string;
-  name: string;
+  timezone: string[];
   start_time: string;
   end_time: string;
-  timezone?: string[];
-  status?: boolean;
+  status: boolean;
 }
 
 export interface TimeWindowUpdateRequest {
-  mobile?: string;
-  name?: string;
-  start_time?: string;
-  end_time?: string;
-  timezone?: string[];
-  status?: boolean;
+  timezone: string[];
+  start_time: string;
+  end_time: string;
+  status: boolean;
 }
 
 export interface TimeWindowListResponse {
   success: boolean;
   data: TimeWindow[];
-  total: number;
-  limit: number;
-  offset: number;
+  message?: string;
 }
 
 export interface AssignRequest {
-  // Organization mobile; resolved server-side when omitted.
-  mobile?: string;
-  user_mobile: string;
-  geofence_id?: number;
-  timewindow_id?: number;
+  orgGeoFence_ids?: number[];
+  timeslot_ids?: number[];
 }
 
 export interface ApiResponse<T> {
@@ -96,12 +82,16 @@ export interface ApiResponse<T> {
 
 export interface IvaltConfig {
   orgMobile: string;
+  orgId: string;
+  userId: string;
   apiBaseUrl: string;
   apiKeyConfigured: boolean;
 }
 
 export interface IvaltConfigUpdateRequest {
   orgMobile?: string;
+  orgId?: string;
+  userId?: string;
   apiBaseUrl?: string;
   apiKey?: string;
 }

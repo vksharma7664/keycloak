@@ -81,16 +81,9 @@ export class KeyClockIDPClient {
     });
   }
 
-  // Geofence endpoints. Realm-level calls omit the mobile so the backend uses
-  // the configured organization mobile.
-  async getActiveGeofences(
-    limit = 10,
-    offset = 0,
-  ): Promise<ApiResponse<GeofenceListResponse>> {
-    return this.#request<GeofenceListResponse>("geofences", undefined, {
-      limit: limit.toString(),
-      offset: offset.toString(),
-    });
+  // Geofence endpoints
+  async getGeofences(): Promise<ApiResponse<GeofenceListResponse>> {
+    return this.#request<GeofenceListResponse>("geofences");
   }
 
   async createGeofence(
@@ -118,38 +111,23 @@ export class KeyClockIDPClient {
     });
   }
 
-  async getAssignedGeofences(mobile: string): Promise<ApiResponse<any>> {
-    return this.#request("geofences/assigned", undefined, { mobile });
+  async getUserGeofences(): Promise<ApiResponse<any>> {
+    return this.#request("geofences/assigned");
   }
 
-  async assignGeofence(request: AssignRequest): Promise<ApiResponse<any>> {
+  async updateUserGeofences(request: AssignRequest): Promise<ApiResponse<any>> {
     return this.#request("geofences/assign", {
-      method: "POST",
+      method: "PUT",
       body: JSON.stringify(request),
     });
   }
 
-  async removeGeofenceAssignment(
-    request: AssignRequest,
-  ): Promise<ApiResponse<any>> {
-    return this.#request("geofences/assign", {
-      method: "DELETE",
-      body: JSON.stringify(request),
-    });
+  // Timeslot endpoints
+  async getTimeslots(): Promise<ApiResponse<TimeWindowListResponse>> {
+    return this.#request<TimeWindowListResponse>("timewindows");
   }
 
-  // Time Window endpoints
-  async getActiveTimeWindows(
-    limit = 10,
-    offset = 0,
-  ): Promise<ApiResponse<TimeWindowListResponse>> {
-    return this.#request<TimeWindowListResponse>("timewindows", undefined, {
-      limit: limit.toString(),
-      offset: offset.toString(),
-    });
-  }
-
-  async createTimeWindow(
+  async createTimeslot(
     request: TimeWindowCreateRequest,
   ): Promise<ApiResponse<any>> {
     return this.#request("timewindows", {
@@ -158,7 +136,7 @@ export class KeyClockIDPClient {
     });
   }
 
-  async updateTimeWindow(
+  async updateTimeslot(
     timewindowId: number,
     request: TimeWindowUpdateRequest,
   ): Promise<ApiResponse<any>> {
@@ -168,28 +146,19 @@ export class KeyClockIDPClient {
     });
   }
 
-  async deleteTimeWindow(timewindowId: number): Promise<ApiResponse<any>> {
+  async deleteTimeslot(timewindowId: number): Promise<ApiResponse<any>> {
     return this.#request(`timewindows/${timewindowId}`, {
       method: "DELETE",
     });
   }
 
-  async getAssignedTimeWindows(mobile: string): Promise<ApiResponse<any>> {
-    return this.#request("timewindows/assigned", undefined, { mobile });
+  async getUserTimeslots(): Promise<ApiResponse<any>> {
+    return this.#request("timewindows/assigned");
   }
 
-  async assignTimeWindow(request: AssignRequest): Promise<ApiResponse<any>> {
+  async updateUserTimeslots(request: AssignRequest): Promise<ApiResponse<any>> {
     return this.#request("timewindows/assign", {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
-  }
-
-  async removeTimeWindowAssignment(
-    request: AssignRequest,
-  ): Promise<ApiResponse<any>> {
-    return this.#request("timewindows/assign", {
-      method: "DELETE",
+      method: "PUT",
       body: JSON.stringify(request),
     });
   }
