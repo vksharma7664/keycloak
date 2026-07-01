@@ -21,6 +21,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -50,56 +52,64 @@ public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
     /**
      * Get all geofences for an organization
      *
-     * @param orgId Organization ID
-     * @return JSON response containing list of geofences
+     * @param orgCode Organization code
+     * @param page    Page number (1-based)
+     * @param perPage Items per page
+     * @param sortBy  Sort column name
+     * @param sortOrder Sort order (asc or desc)
+     * @return JSON response containing paginated list of geofences
      * @throws IOException If API call fails
      */
-    public JsonNode getGeofences(String orgId) throws IOException, InterruptedException {
-        String url = baseUrl + "/organization/" + orgId + "/geo-fences";
-        logger.debugf("Getting geofences for org %s", orgId);
+    public JsonNode getGeofences(String orgCode, int page, int perPage, String sortBy, String sortOrder) throws IOException, InterruptedException {
+        String encodedOrgCode = URLEncoder.encode(orgCode, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/organization/" + encodedOrgCode + "/geo-fences?page=" + page + "&per_page=" + perPage + "&sort_by=" + sortBy + "&sort_order=" + sortOrder;
+        logger.debugf("Getting geofences for org %s", orgCode);
         return getRequest(url);
     }
 
     /**
      * Create a new geofence for an organization
      *
-     * @param orgId Organization ID
+     * @param orgCode Organization code
      * @param jsonPayload JSON payload containing geofence details
      * @return JSON response with created geofence details
      * @throws IOException If API call fails
      */
-    public JsonNode createGeofence(String orgId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/organization/" + orgId + "/create/geo-fence";
-        logger.infof("Creating new geofence for org %s", orgId);
+    public JsonNode createGeofence(String orgCode, String jsonPayload) throws IOException, InterruptedException {
+        String encodedOrgCode = URLEncoder.encode(orgCode, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/organization/" + encodedOrgCode + "/create/geo-fence";
+        logger.infof("Creating new geofence for org %s", orgCode);
         return postRequest(url, jsonPayload);
     }
 
     /**
      * Update an existing geofence
      *
-     * @param orgId Organization ID
+     * @param orgCode Organization code
      * @param geofenceId ID of the geofence to update
      * @param jsonPayload JSON payload containing updated geofence details
      * @return JSON response with updated geofence details
      * @throws IOException If API call fails
      */
-    public JsonNode updateGeofence(String orgId, int geofenceId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/organization/" + orgId + "/update/geo-fence/" + geofenceId;
-        logger.infof("Updating geofence %d for org %s", geofenceId, orgId);
+    public JsonNode updateGeofence(String orgCode, int geofenceId, String jsonPayload) throws IOException, InterruptedException {
+        String encodedOrgCode = URLEncoder.encode(orgCode, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/organization/" + encodedOrgCode + "/update/geo-fence/" + geofenceId;
+        logger.infof("Updating geofence %d for org %s", geofenceId, orgCode);
         return putRequest(url, jsonPayload);
     }
 
     /**
      * Delete a geofence
      *
-     * @param orgId Organization ID
+     * @param orgCode Organization code
      * @param geofenceId ID of the geofence to delete
      * @return JSON response confirming deletion
      * @throws IOException If API call fails
      */
-    public JsonNode deleteGeofence(String orgId, int geofenceId) throws IOException, InterruptedException {
-        String url = baseUrl + "/organization/" + orgId + "/delete/geo-fence/" + geofenceId;
-        logger.infof("Deleting geofence %d for org %s", geofenceId, orgId);
+    public JsonNode deleteGeofence(String orgCode, int geofenceId) throws IOException, InterruptedException {
+        String encodedOrgCode = URLEncoder.encode(orgCode, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/organization/" + encodedOrgCode + "/delete/geo-fence/" + geofenceId;
+        logger.infof("Deleting geofence %d for org %s", geofenceId, orgCode);
         return deleteRequest(url, "{}");
     }
 
@@ -110,27 +120,33 @@ public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
     /**
      * Get geofences assigned to a user
      *
-     * @param userId iVALT user ID
-     * @return JSON response containing list of assigned geofences
+     * @param userMobile User mobile number
+     * @param page       Page number (1-based)
+     * @param perPage    Items per page
+     * @param sortBy     Sort column name
+     * @param sortOrder  Sort order (asc or desc)
+     * @return JSON response containing paginated list of assigned geofences
      * @throws IOException If API call fails
      */
-    public JsonNode getUserGeofences(String userId) throws IOException, InterruptedException {
-        String url = baseUrl + "/user/" + userId + "/geofences";
-        logger.debugf("Getting geofences for user %s", userId);
+    public JsonNode getUserGeofences(String userMobile, int page, int perPage, String sortBy, String sortOrder) throws IOException, InterruptedException {
+        String encodedUserMobile = URLEncoder.encode(userMobile, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/user/" + encodedUserMobile + "/geofences?page=" + page + "&per_page=" + perPage + "&sort_by=" + sortBy + "&sort_order=" + sortOrder;
+        logger.debugf("Getting geofences for user %s", userMobile);
         return getRequest(url);
     }
 
     /**
      * Assign geofences to a user
      *
-     * @param userId iVALT user ID
+     * @param userMobile User mobile number
      * @param jsonPayload JSON payload containing orgGeoFence_ids array
      * @return JSON response with updated assignment list
      * @throws IOException If API call fails
      */
-    public JsonNode updateUserGeofences(String userId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/user/" + userId + "/geofences/update";
-        logger.infof("Updating geofence assignments for user %s", userId);
+    public JsonNode updateUserGeofences(String userMobile, String jsonPayload) throws IOException, InterruptedException {
+        String encodedUserMobile = URLEncoder.encode(userMobile, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/user/" + encodedUserMobile + "/geofences/update";
+        logger.infof("Updating geofence assignments for user %s", userMobile);
         return putRequest(url, jsonPayload);
     }
 
@@ -141,27 +157,33 @@ public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
     /**
      * Get all timeslots for an organization
      *
-     * @param orgId Organization ID
-     * @return JSON response containing list of timeslots
+     * @param orgCode Organization code
+     * @param page    Page number (1-based)
+     * @param perPage Items per page
+     * @param sortBy  Sort column name
+     * @param sortOrder Sort order (asc or desc)
+     * @return JSON response containing paginated list of timeslots
      * @throws IOException If API call fails
      */
-    public JsonNode getTimeslots(String orgId) throws IOException, InterruptedException {
-        String url = baseUrl + "/organization/" + orgId + "/timeslots";
-        logger.debugf("Getting timeslots for org %s", orgId);
+    public JsonNode getTimeslots(String orgCode, int page, int perPage, String sortBy, String sortOrder) throws IOException, InterruptedException {
+        String encodedOrgCode = URLEncoder.encode(orgCode, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/organization/" + encodedOrgCode + "/timeslots?page=" + page + "&per_page=" + perPage + "&sort_by=" + sortBy + "&sort_order=" + sortOrder;
+        logger.debugf("Getting timeslots for org %s", orgCode);
         return getRequest(url);
     }
 
     /**
      * Create a new timeslot for an organization
      *
-     * @param orgId Organization ID
+     * @param orgCode Organization code
      * @param jsonPayload JSON payload containing timeslot details
      * @return JSON response with created timeslot details
      * @throws IOException If API call fails
      */
-    public JsonNode createTimeslot(String orgId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/organization/" + orgId + "/timeslots/add";
-        logger.infof("Creating new timeslot for org %s", orgId);
+    public JsonNode createTimeslot(String orgCode, String jsonPayload) throws IOException, InterruptedException {
+        String encodedOrgCode = URLEncoder.encode(orgCode, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/organization/" + encodedOrgCode + "/timeslots/add";
+        logger.infof("Creating new timeslot for org %s", orgCode);
         return postRequest(url, jsonPayload);
     }
 
@@ -174,7 +196,7 @@ public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode updateTimeslot(int timeslotId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/timeslot/" + timeslotId + "/update";
+        String url = baseUrl + "/keyclock/timeslot/" + timeslotId + "/update";
         logger.infof("Updating timeslot %d", timeslotId);
         return putRequest(url, jsonPayload);
     }
@@ -187,7 +209,7 @@ public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
      * @throws IOException If API call fails
      */
     public JsonNode deleteTimeslot(int timeslotId) throws IOException, InterruptedException {
-        String url = baseUrl + "/timeslot/" + timeslotId + "/delete";
+        String url = baseUrl + "/keyclock/timeslot/" + timeslotId + "/delete";
         logger.infof("Deleting timeslot %d", timeslotId);
         return deleteRequest(url, "{}");
     }
@@ -199,27 +221,33 @@ public class KeyClockIDPApiClient extends AbstractIvaltApiClient {
     /**
      * Get timeslots assigned to a user
      *
-     * @param userId iVALT user ID
-     * @return JSON response containing list of assigned timeslots
+     * @param userMobile User mobile number
+     * @param page       Page number (1-based)
+     * @param perPage    Items per page
+     * @param sortBy     Sort column name
+     * @param sortOrder  Sort order (asc or desc)
+     * @return JSON response containing paginated list of assigned timeslots
      * @throws IOException If API call fails
      */
-    public JsonNode getUserTimeslots(String userId) throws IOException, InterruptedException {
-        String url = baseUrl + "/user/" + userId + "/timeslots";
-        logger.debugf("Getting timeslots for user %s", userId);
+    public JsonNode getUserTimeslots(String userMobile, int page, int perPage, String sortBy, String sortOrder) throws IOException, InterruptedException {
+        String encodedUserMobile = URLEncoder.encode(userMobile, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/user/" + encodedUserMobile + "/timeslots?page=" + page + "&per_page=" + perPage + "&sort_by=" + sortBy + "&sort_order=" + sortOrder;
+        logger.debugf("Getting timeslots for user %s", userMobile);
         return getRequest(url);
     }
 
     /**
      * Assign timeslots to a user
      *
-     * @param userId iVALT user ID
+     * @param userMobile User mobile number
      * @param jsonPayload JSON payload containing timeslot_ids array
      * @return JSON response with updated assignment list
      * @throws IOException If API call fails
      */
-    public JsonNode updateUserTimeslots(String userId, String jsonPayload) throws IOException, InterruptedException {
-        String url = baseUrl + "/user/" + userId + "/timeslots/update";
-        logger.infof("Updating timeslot assignments for user %s", userId);
+    public JsonNode updateUserTimeslots(String userMobile, String jsonPayload) throws IOException, InterruptedException {
+        String encodedUserMobile = URLEncoder.encode(userMobile, StandardCharsets.UTF_8);
+        String url = baseUrl + "/keyclock/user/" + encodedUserMobile + "/timeslots/update";
+        logger.infof("Updating timeslot assignments for user %s", userMobile);
         return putRequest(url, jsonPayload);
     }
 }

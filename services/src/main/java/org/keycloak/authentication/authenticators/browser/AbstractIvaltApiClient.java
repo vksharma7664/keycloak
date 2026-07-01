@@ -29,6 +29,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 /**
  * Abstract base class for iVALT API clients
  * Provides common HTTP client functionality following SOLID principles
@@ -94,9 +96,10 @@ public abstract class AbstractIvaltApiClient {
             logger.debugf("iVALT API POST request successful to %s", url);
             return objectMapper.readTree(response.body());
         } else {
+            String errorDetail = extractErrorDetail(response);
             logger.errorf("iVALT API request failed. Status: %d, Response: %s",
                     response.statusCode(), response.body());
-            throw new IOException("iVALT API request failed: HTTP " + response.statusCode());
+            throw new IvaltApiException(response.statusCode(), errorDetail, url);
         }
     }
 
@@ -124,9 +127,10 @@ public abstract class AbstractIvaltApiClient {
             logger.debugf("iVALT API GET request successful to %s", url);
             return objectMapper.readTree(response.body());
         } else {
+            String errorDetail = extractErrorDetail(response);
             logger.errorf("iVALT API request failed. Status: %d, Response: %s",
                     response.statusCode(), response.body());
-            throw new IOException("iVALT API request failed: HTTP " + response.statusCode());
+            throw new IvaltApiException(response.statusCode(), errorDetail, url);
         }
     }
 
@@ -155,9 +159,10 @@ public abstract class AbstractIvaltApiClient {
             logger.debugf("iVALT API PUT request successful to %s", url);
             return objectMapper.readTree(response.body());
         } else {
+            String errorDetail = extractErrorDetail(response);
             logger.errorf("iVALT API request failed. Status: %d, Response: %s",
                     response.statusCode(), response.body());
-            throw new IOException("iVALT API request failed: HTTP " + response.statusCode());
+            throw new IvaltApiException(response.statusCode(), errorDetail, url);
         }
     }
 
@@ -186,9 +191,60 @@ public abstract class AbstractIvaltApiClient {
             logger.debugf("iVALT API DELETE request successful to %s", url);
             return objectMapper.readTree(response.body());
         } else {
+            String errorDetail = extractErrorDetail(response);
             logger.errorf("iVALT API request failed. Status: %d, Response: %s",
                     response.statusCode(), response.body());
-            throw new IOException("iVALT API request failed: HTTP " + response.statusCode());
+            throw new IvaltApiException(response.statusCode(), errorDetail, url);
+        }
+    }
+
+    /**
+     * Extract a human-readable error detail from the iVALT API error response.
+     * The iVALT API returns errors as: { data: null, error: { detail: "...", title: "..." } }
+     *
+     * @param response The HTTP response
+     * @return Extracted error detail string, or a generic message if parsing fails
+     */
+    protected String extractErrorDetail(HttpResponse<String> response) {
+        try {
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode errorNode = root.path("error");
+            if (errorNode.isObject()) {
+                String detail = errorNode.path("detail").asText("");
+                if (!detail.isEmpty()) {
+                    return detail;
+                }
+                String title = errorNode.path("title").asText("");
+                if (!title.isEmpty()) {
+                    return title;
+                }
+            }
+        } catch (Exception e) {
+            logger.debugf("Failed to parse error response body: %s", e.getMessage());
+        }
+        return "iVALT API request failed: HTTP " + response.statusCode();
+    }
+
+    /**
+     * Custom exception that carries the HTTP status code and parsed error detail
+     * from the iVALT API, so callers can surface meaningful messages to users.
+     */
+    public static class IvaltApiException extends IOException {
+        private final int statusCode;
+        private final String url;
+
+        public IvaltApiException(int statusCode, String message, String url) {
+            super(message);
+            this.statusCode = statusCode;
+            this.url = url;
+        }
+
+        public int getStatusCode() {
+            return statusCode;
+        }
+
+        public String getUrl() {
+            return url;
         }
     }
 }
