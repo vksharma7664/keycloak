@@ -5,6 +5,7 @@ interface GoogleMapPickerProps {
   onLocationSelect: (lat: number, lng: number) => void;
   initialLat?: number;
   initialLng?: number;
+  googleMapsApiKey?: string;
 }
 
 const containerStyle = {
@@ -21,6 +22,7 @@ export default function GoogleMapPicker({
   onLocationSelect,
   initialLat,
   initialLng,
+  googleMapsApiKey,
 }: GoogleMapPickerProps) {
   const [marker, setMarker] = useState<google.maps.LatLngLiteral | null>(
     initialLat && initialLng ? { lat: initialLat, lng: initialLng } : null,
@@ -46,7 +48,7 @@ export default function GoogleMapPicker({
   );
 
   return (
-    <LoadScript googleMapsApiKey={process.env.GOOGLE_MAPS_API_KEY || ""}>
+    <LoadScript googleMapsApiKey={googleMapsApiKey || ""}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}

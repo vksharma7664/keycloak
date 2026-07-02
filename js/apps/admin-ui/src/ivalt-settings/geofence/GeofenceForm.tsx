@@ -126,6 +126,7 @@ export default function GeofenceForm({
             onLocationSelect={handleLocationSelect}
             initialLat={latitude || undefined}
             initialLng={longitude || undefined}
+            googleMapsApiKey=""
           />
           <div style={{ marginTop: "10px" }}>
             <TextInput
@@ -149,6 +150,8 @@ export default function GeofenceForm({
             value={radius}
             min={1}
             onChange={(event) => setRadius(Number(event.currentTarget.value))}
+            onMinus={() => setRadius(Math.max(1, radius - 1))}
+            onPlus={() => setRadius(radius + 1)}
           />
         </FormGroup>
         <FormGroup label="Active" fieldId="active">
