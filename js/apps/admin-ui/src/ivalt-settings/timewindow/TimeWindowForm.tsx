@@ -32,8 +32,12 @@ export default function TimeWindowForm({
   onSave,
 }: TimeWindowFormProps) {
   const keyclockidpClient = useKeyclockidpClient();
-  const [startTime, setStartTime] = useState(timeWindow?.start_time || "");
-  const [endTime, setEndTime] = useState(timeWindow?.end_time || "");
+  const [startTime, setStartTime] = useState(
+    timeWindow?.start_time || timeWindow?.startTime || "",
+  );
+  const [endTime, setEndTime] = useState(
+    timeWindow?.end_time || timeWindow?.endTime || "",
+  );
   const [timezone, setTimezone] = useState(() => {
     if (Array.isArray(timeWindow?.timezone)) {
       return timeWindow.timezone[0] || "UTC";
@@ -48,7 +52,9 @@ export default function TimeWindowForm({
     }
     return "UTC";
   });
-  const [isActive, setIsActive] = useState(timeWindow?.status ?? true);
+  const [isActive, setIsActive] = useState(
+    timeWindow?.status ?? timeWindow?.isActive ?? true,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
