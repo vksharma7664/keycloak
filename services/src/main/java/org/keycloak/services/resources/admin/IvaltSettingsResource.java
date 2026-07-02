@@ -58,6 +58,7 @@ public class IvaltSettingsResource {
     public static final String ATTR_ORG_MOBILE = "ivalt.org.mobile";
     public static final String ATTR_API_KEY = "ivalt.api.key";
     public static final String ATTR_API_BASE_URL = "ivalt.api.base.url";
+    public static final String ATTR_GOOGLE_MAPS_API_KEY = "ivalt.google.maps.api.key";
 
     private static final String DEFAULT_API_BASE_URL = "https://api.ivalt.com";
     private static final String DEFAULT_API_TIMEOUT = "300000";
@@ -99,6 +100,7 @@ public class IvaltSettingsResource {
         data.put("userMobile", orEmpty(realm.getAttribute(ATTR_USER_MOBILE)));
         data.put("apiBaseUrl", getBaseUrl());
         data.put("apiKeyConfigured", !orEmpty(realm.getAttribute(ATTR_API_KEY)).isEmpty());
+        data.put("googleMapsApiKey", orEmpty(realm.getAttribute(ATTR_GOOGLE_MAPS_API_KEY)));
 
         ObjectNode body = MAPPER.createObjectNode();
         body.put("success", true);
@@ -136,6 +138,11 @@ public class IvaltSettingsResource {
                 if (!apiKey.trim().isEmpty()) {
                     realm.setAttribute(ATTR_API_KEY, apiKey.trim());
                 }
+            }
+            // Update Google Maps API key
+            if (node.hasNonNull("googleMapsApiKey")) {
+                String googleMapsApiKey = node.get("googleMapsApiKey").asText().trim();
+                realm.setAttribute(ATTR_GOOGLE_MAPS_API_KEY, googleMapsApiKey);
             }
             return getConfig();
         } catch (Exception e) {

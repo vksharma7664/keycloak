@@ -95,6 +95,7 @@ export interface IvaltConfig {
   userMobile: string;
   apiBaseUrl: string;
   apiKeyConfigured: boolean;
+  googleMapsApiKey: string;
 }
 
 export interface IvaltConfigUpdateRequest {
@@ -102,4 +103,5 @@ export interface IvaltConfigUpdateRequest {
   userMobile?: string;
   apiBaseUrl?: string;
   apiKey?: string;
+  googleMapsApiKey?: string;
 }

@@ -28,6 +28,7 @@ export default function IvaltConfigSection() {
   const [apiBaseUrl, setApiBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState("");
 
   const loadConfig = async () => {
     setLoading(true);
@@ -37,6 +38,7 @@ export default function IvaltConfigSection() {
       setUserMobile(response.data.userMobile);
       setApiBaseUrl(response.data.apiBaseUrl);
       setApiKeyConfigured(response.data.apiKeyConfigured);
+      setGoogleMapsApiKey(response.data.googleMapsApiKey || "");
     } else {
       addError("ivaltConfigLoadError", response.error);
     }
@@ -56,6 +58,7 @@ export default function IvaltConfigSection() {
       apiBaseUrl,
       // Only send the key when the admin entered a new value.
       ...(apiKey ? { apiKey } : {}),
+      googleMapsApiKey,
     });
     if (response.success && response.data) {
       addAlert(t("ivaltConfigSaved"));
@@ -148,6 +151,24 @@ export default function IvaltConfigSection() {
                     : t("ivaltApiKeyNotConfigured")
                 }
                 onChange={(_, value) => setApiKey(value)}
+              />
+            </FormGroup>
+            <FormGroup
+              label={t("ivaltGoogleMapsApiKey")}
+              fieldId="ivalt-google-maps-api-key"
+              labelIcon={
+                <HelpItem
+                  helpText={t("ivaltGoogleMapsApiKeyHelp")}
+                  fieldLabelId="ivaltGoogleMapsApiKey"
+                />
+              }
+            >
+              <TextInput
+                id="ivalt-google-maps-api-key"
+                type="password"
+                value={googleMapsApiKey}
+                placeholder={t("ivaltGoogleMapsApiKeyPlaceholder")}
+                onChange={(_, value) => setGoogleMapsApiKey(value)}
               />
             </FormGroup>
             <ActionGroup>

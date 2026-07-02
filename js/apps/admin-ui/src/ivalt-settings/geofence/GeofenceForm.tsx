@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useKeyclockidpClient } from "../api/keyclockidpClient";
 import {
   Geofence,
@@ -38,6 +38,17 @@ export default function GeofenceForm({
   const [isActive, setIsActive] = useState(geofence?.is_active ?? true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState("");
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      const response = await keyclockidpClient.getConfig();
+      if (response.success && response.data) {
+        setGoogleMapsApiKey(response.data.googleMapsApiKey || "");
+      }
+    };
+    void loadConfig();
+  }, [keyclockidpClient]);
 
   const handleLocationSelect = (lat: number, lng: number) => {
     setLatitude(lat);
@@ -126,7 +137,7 @@ export default function GeofenceForm({
             onLocationSelect={handleLocationSelect}
             initialLat={latitude || undefined}
             initialLng={longitude || undefined}
-            googleMapsApiKey=""
+            googleMapsApiKey={googleMapsApiKey}
           />
           <div style={{ marginTop: "10px" }}>
             <TextInput
