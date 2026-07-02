@@ -70,7 +70,22 @@ export default function TimeWindowList() {
   const [toggleDeleteDialog, DeleteConfirm] = useConfirmDialog({
     titleKey: "ivaltTimeWindowDeleteConfirm",
     children: t("ivaltTimeWindowDeleteConfirmDialog", {
-      name: deleteTarget?.name || `Time Window #${deleteTargetId ?? ""}`,
+      name: (() => {
+        if (Array.isArray(deleteTarget?.timezone)) {
+          return deleteTarget.timezone.join(", ");
+        }
+        if (typeof deleteTarget?.timezone === "string") {
+          try {
+            const parsed = JSON.parse(deleteTarget.timezone);
+            return Array.isArray(parsed)
+              ? parsed.join(", ")
+              : deleteTarget.timezone;
+          } catch {
+            return deleteTarget.timezone;
+          }
+        }
+        return `Time Window #${deleteTargetId ?? ""}`;
+      })(),
     }),
     continueButtonLabel: "delete",
     continueButtonVariant: ButtonVariant.danger,

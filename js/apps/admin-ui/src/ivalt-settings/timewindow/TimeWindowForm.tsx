@@ -5,6 +5,7 @@ import type {
   TimeWindowCreateRequest,
   TimeWindowUpdateRequest,
 } from "../api/types";
+import timezones from "../timezones.json";
 import {
   Modal,
   ModalVariant,
@@ -24,19 +25,6 @@ interface TimeWindowFormProps {
   onClose: () => void;
   onSave: () => void;
 }
-
-const COMMON_TIMEZONES = [
-  "America/Los_Angeles",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "Europe/London",
-  "Europe/Paris",
-  "Asia/Tokyo",
-  "Asia/Shanghai",
-  "Australia/Sydney",
-  "UTC",
-];
 
 export default function TimeWindowForm({
   timeWindow,
@@ -148,10 +136,11 @@ export default function TimeWindowForm({
               </button>
             )}
             onSelect={handleTimezoneSelect}
+            isScrollable
           >
-            {COMMON_TIMEZONES.map((tz) => (
-              <SelectOption key={tz} value={tz}>
-                {tz}
+            {timezones.map((tz) => (
+              <SelectOption key={tz.zone} value={tz.zone}>
+                {tz.name} {tz.gmt}
               </SelectOption>
             ))}
           </Select>

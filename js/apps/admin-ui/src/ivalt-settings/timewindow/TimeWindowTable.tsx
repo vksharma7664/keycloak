@@ -23,7 +23,7 @@ export default function TimeWindowTable({
   onEdit,
   onDelete,
 }: TimeWindowTableProps) {
-  const columns = ["ID", "Name", "Time Range", "Status", "Actions"];
+  const columns = ["ID", "Timezone", "Time Range", "Status", "Actions"];
 
   return (
     <Table aria-label="Time Window table" variant="compact">
@@ -49,7 +49,22 @@ export default function TimeWindowTable({
               <Td>{timeWindow.id}</Td>
               <Td>
                 <TableText wrapModifier="truncate">
-                  {timeWindow.name || `Time Window #${timeWindow.id}`}
+                  {(() => {
+                    if (Array.isArray(timeWindow.timezone)) {
+                      return timeWindow.timezone.join(", ");
+                    }
+                    if (typeof timeWindow.timezone === "string") {
+                      try {
+                        const parsed = JSON.parse(timeWindow.timezone);
+                        return Array.isArray(parsed)
+                          ? parsed.join(", ")
+                          : timeWindow.timezone;
+                      } catch {
+                        return timeWindow.timezone;
+                      }
+                    }
+                    return "UTC";
+                  })()}
                 </TableText>
               </Td>
               <Td>{`${timeWindow.start_time} - ${timeWindow.end_time}`}</Td>

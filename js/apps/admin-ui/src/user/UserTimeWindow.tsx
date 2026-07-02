@@ -92,7 +92,22 @@ export default function UserTimeWindow() {
   const [toggleRemoveDialog, RemoveConfirm] = useConfirmDialog({
     titleKey: "ivaltTimeWindowUnassignConfirm",
     children: t("ivaltTimeWindowUnassignConfirmDialog", {
-      name: removeTarget?.name || `Time Window #${removeTargetId ?? ""}`,
+      name: (() => {
+        if (Array.isArray(removeTarget?.timezone)) {
+          return removeTarget.timezone.join(", ");
+        }
+        if (typeof removeTarget?.timezone === "string") {
+          try {
+            const parsed = JSON.parse(removeTarget.timezone);
+            return Array.isArray(parsed)
+              ? parsed.join(", ")
+              : removeTarget.timezone;
+          } catch {
+            return removeTarget.timezone;
+          }
+        }
+        return `Time Window #${removeTargetId ?? ""}`;
+      })(),
     }),
     continueButtonLabel: "remove",
     continueButtonVariant: ButtonVariant.danger,
@@ -147,7 +162,22 @@ export default function UserTimeWindow() {
                 <FormSelectOption
                   key={w.id}
                   value={w.id}
-                  label={w.name || `Time Window #${w.id}`}
+                  label={(() => {
+                    if (Array.isArray(w.timezone)) {
+                      return w.timezone.join(", ");
+                    }
+                    if (typeof w.timezone === "string") {
+                      try {
+                        const parsed = JSON.parse(w.timezone);
+                        return Array.isArray(parsed)
+                          ? parsed.join(", ")
+                          : w.timezone;
+                      } catch {
+                        return w.timezone;
+                      }
+                    }
+                    return `Time Window #${w.id}`;
+                  })()}
                 />
               ))}
             </FormSelect>
@@ -179,7 +209,24 @@ export default function UserTimeWindow() {
           ) : (
             assigned.map((w) => (
               <Tr key={w.id}>
-                <Td>{w.name || `Time Window #${w.id}`}</Td>
+                <Td>
+                  {(() => {
+                    if (Array.isArray(w.timezone)) {
+                      return w.timezone.join(", ");
+                    }
+                    if (typeof w.timezone === "string") {
+                      try {
+                        const parsed = JSON.parse(w.timezone);
+                        return Array.isArray(parsed)
+                          ? parsed.join(", ")
+                          : w.timezone;
+                      } catch {
+                        return w.timezone;
+                      }
+                    }
+                    return `Time Window #${w.id}`;
+                  })()}
+                </Td>
                 <Td>{`${w.start_time} - ${w.end_time}`}</Td>
                 <Td isActionCell>
                   <Button
