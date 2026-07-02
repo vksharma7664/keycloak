@@ -82,7 +82,7 @@ graph LR
 
 The iVALT Settings page is where administrators configure the organization's credentials for the iVALT Cloud API. These values are stored as realm attributes in Keycloak's database, making them specific to each realm.
 
-Four fields are configurable:
+Five fields are configurable:
 
 | Field | Realm Attribute | Notes |
 |-------|-----------------|-------|
@@ -90,6 +90,7 @@ Four fields are configurable:
 | User Mobile | `ivalt.user.mobile` | Owner account for assignments (E.164) |
 | API Base URL | `ivalt.api.base.url` | Default: `https://api.ivalt.com` |
 | API Key | `ivalt.api.key` | Password field; never echoed back |
+| Google Maps API Key | `ivalt.google.maps.api.key` | Used for map picker in geofence creation |
 
 The **API Key** is write-only — when the config is fetched, the backend returns `apiKeyConfigured: boolean` rather than the key value itself. This means the key can only be set or overwritten, never read back.
 
@@ -105,11 +106,11 @@ sequenceDiagram
     Admin->>UI: Open /:realm/ivalt-settings
     UI->>Client: getConfig()
     Client->>Backend: GET /admin/realms/{realm}/ivalt-settings/config
-    Backend-->>Client: { orgCode, userMobile, apiBaseUrl, apiKeyConfigured }
+    Backend-->>Client: { orgCode, userMobile, apiBaseUrl, apiKeyConfigured, googleMapsApiKey }
     Client-->>UI: Populate form
     Admin->>UI: Edit fields
     Admin->>UI: Click Save
-    UI->>Client: updateConfig({ orgCode, userMobile, apiBaseUrl, apiKey? })
+    UI->>Client: updateConfig({ orgCode, userMobile, apiBaseUrl, apiKey?, googleMapsApiKey })
     Client->>Backend: PUT /admin/realms/{realm}/ivalt-settings/config
     Backend->>Backend: realm.setAttribute(...)
     Backend-->>Client: Updated config (apiKey still masked)
@@ -124,7 +125,7 @@ The geofence management page allows administrators to create, view, edit, and de
 
 When the admin opens the Geo Fences page, `GeofenceList` fetches the paginated list from the backend, which proxies the request to the iVALT Cloud API's KeyClockIDP endpoint. The response is transformed from the iVALT format to the frontend format before rendering in a table.
 
-Creating a geofence opens a modal (`GeofenceForm`) that includes the `GoogleMapPicker` component — an interactive Google Map where the admin clicks to set the center point and adjusts a radius slider. On submit, the data is sent to the backend, which creates the geofence via the iVALT API and returns the result.
+Creating a geofence opens a modal (`GeofenceForm`) that includes the `GoogleMapPicker` component — an interactive Google Map where the admin clicks to set the center point and adjusts a radius slider. The Google Maps API key is loaded from the iVALT settings configuration. On submit, the data is sent to the backend, which creates the geofence via the iVALT API and returns the result.
 
 ```mermaid
 sequenceDiagram

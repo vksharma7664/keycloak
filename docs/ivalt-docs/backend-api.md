@@ -8,7 +8,7 @@ This document describes the REST API exposed by the Keycloak backend for iVALT c
 
 iVALT credentials are stored as Keycloak realm attributes — key-value pairs associated with each realm in the Keycloak database. This means settings are scoped per realm, allowing different configurations for different environments or organizations within the same Keycloak instance.
 
-Four attributes are used:
+Five attributes are used:
 
 | Attribute | Key | Set via | Used by |
 |-----------|-----|---------|---------|
@@ -16,6 +16,7 @@ Four attributes are used:
 | User mobile | `ivalt.user.mobile` | Admin UI config form | Assign/unassign endpoints (owner account) |
 | API key | `ivalt.api.key` | Admin UI config form (write-only) | All iVALT API calls |
 | API base URL | `ivalt.api.base.url` | Admin UI config form | API client base URL (default: `https://api.ivalt.com`) |
+| Google Maps API key | `ivalt.google.maps.api.key` | Admin UI config form | Google Map picker in geofence creation |
 
 The **Org code** identifies the organization within the iVALT Cloud API and is required for all geofence and time window operations. The **User mobile** is the admin/owner account used as the identity for assignment operations. The **API key** authenticates all requests to the iVALT API and is write-only — it is never returned in GET responses. The **API base URL** defaults to `https://api.ivalt.com` but can be overridden for testing or custom deployments.
 
@@ -31,8 +32,8 @@ Two endpoints handle reading and writing the realm-level iVALT configuration:
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `config` | `viewRealm` | Get config — returns `{ orgCode, userMobile, apiBaseUrl, apiKeyConfigured }`. API key value is **never** returned (only `apiKeyConfigured: boolean`). |
-| `PUT` | `config` | `manageRealm` | Update config — accepts `{ orgCode, userMobile, apiBaseUrl, apiKey? }`. API key only overwritten when non-empty. |
+| `GET` | `config` | `viewRealm` | Get config — returns `{ orgCode, userMobile, apiBaseUrl, apiKeyConfigured, googleMapsApiKey }`. API key value is **never** returned (only `apiKeyConfigured: boolean`). |
+| `PUT` | `config` | `manageRealm` | Update config — accepts `{ orgCode, userMobile, apiBaseUrl, apiKey?, googleMapsApiKey }`. API key only overwritten when non-empty. |
 
 The GET endpoint returns a boolean `apiKeyConfigured` instead of the actual key value for security — the frontend only needs to know whether a key has been set. The PUT endpoint only updates the API key when the field is non-empty, allowing the admin to update other fields without re-entering the key.
 

@@ -82,7 +82,7 @@ The following table lists every component in the integration, its type (Java SPI
 | `IvaltSettingsResource` | Java REST | `services/.../admin/` | Admin API — geofence/timewindow CRUD, config management |
 | `IvaltApiClient` | Java HTTP | `services/.../browser/` | Auth API client — sends push, validates auth |
 | `KeyClockIDPApiClient` | Java HTTP | `services/.../browser/` | Admin API client — geofence/timewindow CRUD |
-| `IvaltConfigSection` | React | `js/apps/admin-ui/src/ivalt-settings/` | Config form (org code, mobile, API key, base URL) |
+| `IvaltConfigSection` | React | `js/apps/admin-ui/src/ivalt-settings/` | Config form (org code, mobile, API key, base URL, Google Maps API key) |
 | `GeoFenceSection` | React | `js/apps/admin-ui/src/ivalt-settings/` | Geofence management page |
 | `TimeWindowSection` | React | `js/apps/admin-ui/src/ivalt-settings/` | Time window management page |
 | `GeofenceList/Table/Form` | React | `js/apps/admin-ui/src/ivalt-settings/geofence/` | Geofence CRUD components |

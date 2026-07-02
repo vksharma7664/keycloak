@@ -125,8 +125,9 @@ Navigate to the realm's **iVALT Settings** page (under the Configure group in th
 | User Mobile | Owner mobile in E.164 format (e.g. `+919876543210`) |
 | API Base URL | Default: `https://api.ivalt.com` |
 | API Key | Write-only; masked in UI |
+| Google Maps API Key | Required for map picker in geofence creation |
 
-The **Org Code** and **User Mobile** are required for geofence and time window CRUD operations. The **API Key** authenticates all requests to the iVALT Cloud API. These settings must be saved before geofences or time windows can be managed.
+The **Org Code** and **User Mobile** are required for geofence and time window CRUD operations. The **API Key** authenticates all requests to the iVALT Cloud API. The **Google Maps API Key** is required to display the interactive map picker when creating or editing geofences. Get a key from the Google Cloud Console with the Maps JavaScript API enabled. These settings must be saved before geofences or time windows can be managed.
 
 ### 4. Configure flows
 
