@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
+  ButtonVariant,
   FormSelect,
   FormSelectOption,
   PageSection,
@@ -11,6 +12,7 @@ import {
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { KeycloakSpinner, useAlerts } from "@keycloak/keycloak-ui-shared";
+import { useConfirmDialog } from "../components/confirm-dialog/ConfirmDialog";
 import { useKeyclockidpClient } from "../ivalt-settings/api/keyclockidpClient";
 import type { Geofence } from "../ivalt-settings/api/types";
 
@@ -36,6 +38,7 @@ export default function UserGeofence() {
   const [available, setAvailable] = useState<Geofence[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [removeTargetId, setRemoveTargetId] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     const [assignedRes, activeRes] = await Promise.all([
@@ -82,21 +85,38 @@ export default function UserGeofence() {
     setBusy(false);
   };
 
-  const handleRemove = async (geofenceId: number) => {
-    setBusy(true);
-    const newAssignedIds = assigned
-      .filter((g) => g.id !== geofenceId)
-      .map((g) => g.id);
-    const response = await keyclockidpClient.updateUserGeofences({
-      orgGeoFence_ids: newAssignedIds,
-    });
-    if (response.success) {
-      addAlert(t("geofenceUnassigned"));
-      await refresh();
-    } else {
-      addError("geofenceUnassignError", response.error);
-    }
-    setBusy(false);
+  const removeTarget = assigned.find((g) => g.id === removeTargetId);
+
+  const [toggleRemoveDialog, RemoveConfirm] = useConfirmDialog({
+    titleKey: "ivaltGeofenceUnassignConfirm",
+    children: t("ivaltGeofenceUnassignConfirmDialog", {
+      name: removeTarget?.name ?? "",
+    }),
+    continueButtonLabel: "remove",
+    continueButtonVariant: ButtonVariant.danger,
+    onConfirm: async () => {
+      if (removeTargetId === null) return;
+      setBusy(true);
+      const newAssignedIds = assigned
+        .filter((g) => g.id !== removeTargetId)
+        .map((g) => g.id);
+      const response = await keyclockidpClient.updateUserGeofences({
+        orgGeoFence_ids: newAssignedIds,
+      });
+      if (response.success) {
+        addAlert(t("geofenceUnassigned"));
+        setRemoveTargetId(null);
+        await refresh();
+      } else {
+        addError("geofenceUnassignError", response.error);
+      }
+      setBusy(false);
+    },
+  });
+
+  const handleRemove = (geofenceId: number) => {
+    setRemoveTargetId(geofenceId);
+    toggleRemoveDialog();
   };
 
   if (loading) {
@@ -105,6 +125,7 @@ export default function UserGeofence() {
 
   return (
     <PageSection variant="light">
+      <RemoveConfirm />
       <Toolbar>
         <ToolbarContent>
           <ToolbarItem>

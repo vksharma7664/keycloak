@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
+  ButtonVariant,
   FormSelect,
   FormSelectOption,
   PageSection,
@@ -11,6 +12,7 @@ import {
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { KeycloakSpinner, useAlerts } from "@keycloak/keycloak-ui-shared";
+import { useConfirmDialog } from "../components/confirm-dialog/ConfirmDialog";
 import { useKeyclockidpClient } from "../ivalt-settings/api/keyclockidpClient";
 import type { TimeWindow } from "../ivalt-settings/api/types";
 
@@ -36,6 +38,7 @@ export default function UserTimeWindow() {
   const [available, setAvailable] = useState<TimeWindow[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [removeTargetId, setRemoveTargetId] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     const [assignedRes, activeRes] = await Promise.all([
@@ -84,21 +87,38 @@ export default function UserTimeWindow() {
     setBusy(false);
   };
 
-  const handleRemove = async (timewindowId: number) => {
-    setBusy(true);
-    const newAssignedIds = assigned
-      .filter((w) => w.id !== timewindowId)
-      .map((w) => w.id);
-    const response = await keyclockidpClient.updateUserTimeslots({
-      timeslot_ids: newAssignedIds,
-    });
-    if (response.success) {
-      addAlert(t("timeWindowUnassigned"));
-      await refresh();
-    } else {
-      addError("timeWindowUnassignError", response.error);
-    }
-    setBusy(false);
+  const removeTarget = assigned.find((w) => w.id === removeTargetId);
+
+  const [toggleRemoveDialog, RemoveConfirm] = useConfirmDialog({
+    titleKey: "ivaltTimeWindowUnassignConfirm",
+    children: t("ivaltTimeWindowUnassignConfirmDialog", {
+      name: removeTarget?.name || `Time Window #${removeTargetId ?? ""}`,
+    }),
+    continueButtonLabel: "remove",
+    continueButtonVariant: ButtonVariant.danger,
+    onConfirm: async () => {
+      if (removeTargetId === null) return;
+      setBusy(true);
+      const newAssignedIds = assigned
+        .filter((w) => w.id !== removeTargetId)
+        .map((w) => w.id);
+      const response = await keyclockidpClient.updateUserTimeslots({
+        timeslot_ids: newAssignedIds,
+      });
+      if (response.success) {
+        addAlert(t("timeWindowUnassigned"));
+        setRemoveTargetId(null);
+        await refresh();
+      } else {
+        addError("timeWindowUnassignError", response.error);
+      }
+      setBusy(false);
+    },
+  });
+
+  const handleRemove = (timewindowId: number) => {
+    setRemoveTargetId(timewindowId);
+    toggleRemoveDialog();
   };
 
   if (loading) {
@@ -107,6 +127,7 @@ export default function UserTimeWindow() {
 
   return (
     <PageSection variant="light">
+      <RemoveConfirm />
       <Toolbar>
         <ToolbarContent>
           <ToolbarItem>

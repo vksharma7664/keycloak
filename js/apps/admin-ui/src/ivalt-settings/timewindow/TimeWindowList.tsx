@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useKeyclockidpClient } from "../api/keyclockidpClient";
 import type { TimeWindow, PaginationMeta } from "../api/types";
 import {
   Button,
+  ButtonVariant,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -10,12 +12,15 @@ import {
   Pagination,
 } from "@patternfly/react-core";
 import { PlusIcon } from "@patternfly/react-icons";
+import { useConfirmDialog } from "../../components/confirm-dialog/ConfirmDialog";
 import TimeWindowTable from "./TimeWindowTable";
 import TimeWindowForm from "./TimeWindowForm";
 
 export default function TimeWindowList() {
+  const { t } = useTranslation();
   const keyclockidpClient = useKeyclockidpClient();
   const [timeWindows, setTimeWindows] = useState<TimeWindow[]>([]);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTimeWindow, setEditingTimeWindow] = useState<TimeWindow | null>(
@@ -60,15 +65,32 @@ export default function TimeWindowList() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (timeWindowId: number) => {
-    const response = await keyclockidpClient.deleteTimeslot(timeWindowId);
-    if (response.success) {
-      setSuccess("Time window deleted successfully");
-      void loadTimeWindows();
-      setTimeout(() => setSuccess(null), 3000);
-    } else {
-      setError(response.error || "Failed to delete time window");
-    }
+  const deleteTarget = timeWindows.find((w) => w.id === deleteTargetId);
+
+  const [toggleDeleteDialog, DeleteConfirm] = useConfirmDialog({
+    titleKey: "ivaltTimeWindowDeleteConfirm",
+    children: t("ivaltTimeWindowDeleteConfirmDialog", {
+      name: deleteTarget?.name || `Time Window #${deleteTargetId ?? ""}`,
+    }),
+    continueButtonLabel: "delete",
+    continueButtonVariant: ButtonVariant.danger,
+    onConfirm: async () => {
+      if (deleteTargetId === null) return;
+      const response = await keyclockidpClient.deleteTimeslot(deleteTargetId);
+      if (response.success) {
+        setSuccess("Time window deleted successfully");
+        setDeleteTargetId(null);
+        void loadTimeWindows();
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error || "Failed to delete time window");
+      }
+    },
+  });
+
+  const handleDelete = (timeWindowId: number) => {
+    setDeleteTargetId(timeWindowId);
+    toggleDeleteDialog();
   };
 
   const handleModalClose = () => {
@@ -91,6 +113,7 @@ export default function TimeWindowList() {
 
   return (
     <>
+      <DeleteConfirm />
       {error && <Alert variant="danger" isInline title={error} />}
       {success && <Alert variant="success" isInline title={success} />}
       <Toolbar>

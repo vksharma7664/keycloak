@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useKeyclockidpClient } from "../api/keyclockidpClient";
 import type { Geofence, PaginationMeta } from "../api/types";
 import {
   Button,
+  ButtonVariant,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -10,12 +12,15 @@ import {
   Pagination,
 } from "@patternfly/react-core";
 import { PlusIcon } from "@patternfly/react-icons";
+import { useConfirmDialog } from "../../components/confirm-dialog/ConfirmDialog";
 import GeofenceTable from "./GeofenceTable";
 import GeofenceForm from "./GeofenceForm";
 
 export default function GeofenceList() {
+  const { t } = useTranslation();
   const keyclockidpClient = useKeyclockidpClient();
   const [geofences, setGeofences] = useState<Geofence[]>([]);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGeofence, setEditingGeofence] = useState<Geofence | null>(null);
@@ -58,15 +63,32 @@ export default function GeofenceList() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (geofenceId: number) => {
-    const response = await keyclockidpClient.deleteGeofence(geofenceId);
-    if (response.success) {
-      setSuccess("Geofence deleted successfully");
-      void loadGeofences();
-      setTimeout(() => setSuccess(null), 3000);
-    } else {
-      setError(response.error || "Failed to delete geofence");
-    }
+  const deleteTarget = geofences.find((g) => g.id === deleteTargetId);
+
+  const [toggleDeleteDialog, DeleteConfirm] = useConfirmDialog({
+    titleKey: "ivaltGeofenceDeleteConfirm",
+    children: t("ivaltGeofenceDeleteConfirmDialog", {
+      name: deleteTarget?.name ?? "",
+    }),
+    continueButtonLabel: "delete",
+    continueButtonVariant: ButtonVariant.danger,
+    onConfirm: async () => {
+      if (deleteTargetId === null) return;
+      const response = await keyclockidpClient.deleteGeofence(deleteTargetId);
+      if (response.success) {
+        setSuccess("Geofence deleted successfully");
+        setDeleteTargetId(null);
+        void loadGeofences();
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error || "Failed to delete geofence");
+      }
+    },
+  });
+
+  const handleDelete = (geofenceId: number) => {
+    setDeleteTargetId(geofenceId);
+    toggleDeleteDialog();
   };
 
   const handleModalClose = () => {
@@ -89,6 +111,7 @@ export default function GeofenceList() {
 
   return (
     <>
+      <DeleteConfirm />
       {error && <Alert variant="danger" isInline title={error} />}
       {success && <Alert variant="success" isInline title={success} />}
       <Toolbar>

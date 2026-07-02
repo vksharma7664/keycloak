@@ -24,6 +24,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
+import org.keycloak.authentication.authenticators.browser.AbstractIvaltApiClient;
 import org.keycloak.authentication.authenticators.browser.IvaltAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.browser.KeyClockIDPApiClient;
 import org.keycloak.models.KeycloakSession;
@@ -53,6 +54,8 @@ public class IvaltSettingsResource {
     /** Realm attribute keys for iVALT configuration. */
     public static final String ATTR_ORG_CODE = "ivalt.org.code";
     public static final String ATTR_USER_MOBILE = "ivalt.user.mobile";
+    /** @deprecated Legacy attribute kept for migration from older iVALT settings. */
+    public static final String ATTR_ORG_MOBILE = "ivalt.org.mobile";
     public static final String ATTR_API_KEY = "ivalt.api.key";
     public static final String ATTR_API_BASE_URL = "ivalt.api.base.url";
 
@@ -124,7 +127,8 @@ public class IvaltSettingsResource {
             }
             if (node.hasNonNull("apiBaseUrl")) {
                 String baseUrl = node.get("apiBaseUrl").asText().trim();
-                realm.setAttribute(ATTR_API_BASE_URL, baseUrl.isEmpty() ? DEFAULT_API_BASE_URL : baseUrl);
+                realm.setAttribute(ATTR_API_BASE_URL,
+                        baseUrl.isEmpty() ? DEFAULT_API_BASE_URL : normalizeBaseUrl(baseUrl));
             }
             // Only overwrite the API key when a non-empty value is provided.
             if (node.hasNonNull("apiKey")) {
@@ -442,7 +446,7 @@ public class IvaltSettingsResource {
 
     private String getBaseUrl() {
         String configured = realm.getAttribute(ATTR_API_BASE_URL);
-        return isBlank(configured) ? DEFAULT_API_BASE_URL : configured.trim();
+        return isBlank(configured) ? DEFAULT_API_BASE_URL : normalizeBaseUrl(configured);
     }
 
     private String getOrgCode() {
@@ -450,7 +454,33 @@ public class IvaltSettingsResource {
     }
 
     private String getUserMobile() {
-        return orEmpty(realm.getAttribute(ATTR_USER_MOBILE)).trim();
+        String userMobile = orEmpty(realm.getAttribute(ATTR_USER_MOBILE)).trim();
+        if (!userMobile.isEmpty()) {
+            return userMobile;
+        }
+        // Backwards compatibility with older settings that only stored org mobile.
+        return orEmpty(realm.getAttribute(ATTR_ORG_MOBILE)).trim();
+    }
+
+    /**
+     * Normalize the configured API base URL. The KeyClockIDP client appends
+     * {@code /keyclock/...} paths, so strip any trailing {@code /keyclock} or
+     * {@code /keyclockidp} segment and trailing slashes.
+     */
+    static String normalizeBaseUrl(String baseUrl) {
+        String normalized = baseUrl.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        if (normalized.endsWith("/keyclockidp")) {
+            normalized = normalized.substring(0, normalized.length() - "/keyclockidp".length());
+        } else if (normalized.endsWith("/keyclock")) {
+            normalized = normalized.substring(0, normalized.length() - "/keyclock".length());
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private static boolean isBlank(String value) {
