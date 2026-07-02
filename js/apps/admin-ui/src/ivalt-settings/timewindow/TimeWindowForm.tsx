@@ -34,7 +34,20 @@ export default function TimeWindowForm({
   const keyclockidpClient = useKeyclockidpClient();
   const [startTime, setStartTime] = useState(timeWindow?.start_time || "");
   const [endTime, setEndTime] = useState(timeWindow?.end_time || "");
-  const [timezone, setTimezone] = useState(timeWindow?.timezone?.[0] || "UTC");
+  const [timezone, setTimezone] = useState(() => {
+    if (Array.isArray(timeWindow?.timezone)) {
+      return timeWindow.timezone[0] || "UTC";
+    }
+    if (typeof timeWindow?.timezone === "string") {
+      try {
+        const parsed = JSON.parse(timeWindow.timezone);
+        return Array.isArray(parsed) ? parsed[0] || "UTC" : timeWindow.timezone;
+      } catch {
+        return timeWindow.timezone || "UTC";
+      }
+    }
+    return "UTC";
+  });
   const [isActive, setIsActive] = useState(timeWindow?.status ?? true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
