@@ -11,6 +11,10 @@ import { configDefaults } from "vitest/config";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const external = ["react", "react/jsx-runtime", "react-dom"];
+  const messagesPath = path.resolve(
+    __dirname,
+    "./maven-resources/theme/keycloak.v2/admin/messages/messages_en.properties",
+  );
   const plugins = [
     react(),
     checker({ typescript: true }),
@@ -26,17 +30,25 @@ export default defineConfig(({ mode }) => {
         if (id === "message-bundle") {
           let properties = {};
           if (process.env.NODE_ENV === "development") {
-            properties = getProperties(
-              readFileSync(
-                "./maven-resources/theme/keycloak.v2/admin/messages/messages_en.properties",
-              ),
-            );
+            properties = getProperties(readFileSync(messagesPath, "utf8"));
           }
           return {
             code: `export default ${JSON.stringify(properties)};`,
           };
         }
         return null;
+      },
+      configureServer(server) {
+        server.watcher.add(messagesPath);
+        server.watcher.on("change", (file) => {
+          if (file === messagesPath) {
+            const mod = server.moduleGraph.getModuleById("message-bundle");
+            if (mod) {
+              server.moduleGraph.invalidateModule(mod);
+              server.ws.send({ type: "full-reload" });
+            }
+          }
+        });
       },
     },
   ];

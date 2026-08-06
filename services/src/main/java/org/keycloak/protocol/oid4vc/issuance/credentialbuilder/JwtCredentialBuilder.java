@@ -18,17 +18,22 @@
 package org.keycloak.protocol.oid4vc.issuance.credentialbuilder;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 
+import org.keycloak.VCFormat;
 import org.keycloak.jose.jws.JWSBuilder;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.oid4vci.CredentialScopeModel;
 import org.keycloak.protocol.oid4vc.issuance.TimeClaimNormalizer;
 import org.keycloak.protocol.oid4vc.issuance.TimeProvider;
 import org.keycloak.protocol.oid4vc.model.CredentialBuildConfig;
+import org.keycloak.protocol.oid4vc.model.CredentialDefinition;
 import org.keycloak.protocol.oid4vc.model.CredentialSubject;
-import org.keycloak.protocol.oid4vc.model.Format;
+import org.keycloak.protocol.oid4vc.model.SupportedCredentialConfiguration;
 import org.keycloak.protocol.oid4vc.model.VerifiableCredential;
 import org.keycloak.representations.JsonWebToken;
 
@@ -60,7 +65,7 @@ public class JwtCredentialBuilder implements CredentialBuilder {
 
     @Override
     public String getSupportedFormat() {
-        return Format.JWT_VC;
+        return VCFormat.JWT_VC;
     }
 
     @Override
@@ -68,6 +73,8 @@ public class JwtCredentialBuilder implements CredentialBuilder {
             VerifiableCredential verifiableCredential,
             CredentialBuildConfig credentialBuildConfig
     ) throws CredentialBuilderException {
+        verifiableCredential.setType(getCredentialTypes(verifiableCredential.getType()));
+
         // Populate the issuer field of the VC
         verifiableCredential.setIssuer(credentialBuildConfig.getCredentialIssuer());
 
@@ -103,5 +110,22 @@ public class JwtCredentialBuilder implements CredentialBuilder {
                 .jsonContent(jsonWebToken);
 
         return new JwtCredentialBody(jwsBuilder);
+    }
+
+    private static List<String> getCredentialTypes(List<String> credentialTypes) {
+        List<String> types = new ArrayList<>(Optional.ofNullable(credentialTypes).orElseGet(List::of));
+        if (!types.contains(CredentialDefinition.VERIFIABLE_CREDENTIAL_TYPE)) {
+            types.add(0, CredentialDefinition.VERIFIABLE_CREDENTIAL_TYPE);
+        }
+        return types;
+    }
+
+    @Override
+    public void contributeToMetadata(SupportedCredentialConfiguration credentialConfig, CredentialScopeModel credentialScope) {
+        CredentialDefinition credentialDefinition = CredentialDefinition.parse(credentialScope);
+        // @context must not be included for jwt_vc_json format per OID4VCI spec;
+        // it is only valid for ldp_vc format.
+        credentialDefinition.setContext(null);
+        credentialConfig.setCredentialDefinition(credentialDefinition);
     }
 }

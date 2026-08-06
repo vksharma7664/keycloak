@@ -80,8 +80,11 @@ import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.IdentityProviderMapperModel;
 import org.keycloak.models.IdentityProviderModel;
+import org.keycloak.models.IssuedVerifiableCredentialModel;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.ModelDuplicateException;
 import org.keycloak.models.ModelException;
+import org.keycloak.models.ModelValidationException;
 import org.keycloak.models.OrganizationDomainModel;
 import org.keycloak.models.OrganizationModel;
 import org.keycloak.models.ProtocolMapperModel;
@@ -91,6 +94,7 @@ import org.keycloak.models.UserConsentModel;
 import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserProvider;
+import org.keycloak.models.UserVerifiableCredentialModel;
 import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.models.credential.dto.OTPCredentialData;
@@ -98,7 +102,10 @@ import org.keycloak.models.credential.dto.OTPSecretData;
 import org.keycloak.models.credential.dto.PasswordCredentialData;
 import org.keycloak.organization.OrganizationProvider;
 import org.keycloak.policy.PasswordPolicyNotMetException;
+import org.keycloak.protocol.oidc.rar.AuthorizationRequestParserProvider;
 import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.rar.AuthorizationDetails;
+import org.keycloak.rar.AuthorizationRequestContext;
 import org.keycloak.representations.idm.AuthenticationExecutionRepresentation;
 import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
 import org.keycloak.representations.idm.AuthenticatorConfigRepresentation;
@@ -127,6 +134,8 @@ import org.keycloak.representations.idm.authorization.ResourceOwnerRepresentatio
 import org.keycloak.representations.idm.authorization.ResourceRepresentation;
 import org.keycloak.representations.idm.authorization.ResourceServerRepresentation;
 import org.keycloak.representations.idm.authorization.ScopeRepresentation;
+import org.keycloak.representations.idm.oid4vc.IssuedVerifiableCredentialRepresentation;
+import org.keycloak.representations.idm.oid4vc.UserVerifiableCredentialRepresentation;
 import org.keycloak.storage.DatastoreProvider;
 import org.keycloak.util.JsonSerialization;
 import org.keycloak.utils.StringUtil;
@@ -575,12 +584,12 @@ public class RepresentationToModel {
     }
 
     private static String determineNewSecret(ClientModel client, ClientRepresentation rep) {
-        if (client.isPublicClient() || client.isBearerOnly()) {
+        if (client.isPublicClient()) {
             // Clear out the secret with null
             return null;
         }
 
-        // adding secret if the client isn't public nor bearer only
+        // adding secret if the client isn't public
         String currentSecret = client.getSecret();
         String newSecret = rep.getSecret();
 
@@ -630,7 +639,11 @@ public class RepresentationToModel {
                         existingProtocolMappers.remove(protocolNameKey);
 
                 } else {
-                    resource.addProtocolMapper(toModel(protocolMapperRepresentation));
+                    try {
+                        resource.addProtocolMapper(toModel(protocolMapperRepresentation));
+                    } catch (ModelDuplicateException e) {
+                        throw new ModelValidationException("Cannot add protocol mapper '%s'. %s".formatted(protocolMapperRepresentation.getName(), e.getMessage()));
+                    }
                 }
             }
 
@@ -807,6 +820,22 @@ public class RepresentationToModel {
         }
     }
 
+    public static void createVerifiableCredentials(UserRepresentation userRep, KeycloakSession session, UserModel user) {
+        if (userRep.getVerifiableCredentials() != null) {
+            for (UserVerifiableCredentialRepresentation verifiableCred : userRep.getVerifiableCredentials()) {
+                session.users().addVerifiableCredential(user.getId(), toModel(verifiableCred));
+            }
+        }
+    }
+
+    public static void createIssuedVerifiableCredentials(UserRepresentation userRep, KeycloakSession session, UserModel user) {
+        if (userRep.getIssuedVerifiableCredentials() != null) {
+            for (IssuedVerifiableCredentialRepresentation issuedCred : userRep.getIssuedVerifiableCredentials()) {
+                session.users().addIssuedVerifiableCredential(toModel(issuedCred));
+            }
+        }
+    }
+
     public static CredentialModel toModel(CredentialRepresentation cred) {
         CredentialModel model = new CredentialModel();
         model.setCreatedDate(cred.getCreatedDate());
@@ -944,7 +973,7 @@ public class RepresentationToModel {
         return model;
     }
 
-    public static UserConsentModel toModel(RealmModel newRealm, UserConsentRepresentation consentRep) {
+    public static UserConsentModel toModel(RealmModel newRealm, UserConsentRepresentation consentRep, KeycloakSession session) {
         ClientModel client = newRealm.getClientByClientId(consentRep.getClientId());
         if (client == null) {
             throw new RuntimeException("Unable to find client consent mappings for client: " + consentRep.getClientId());
@@ -957,10 +986,28 @@ public class RepresentationToModel {
         if (consentRep.getGrantedClientScopes() != null) {
             for (String scopeName : consentRep.getGrantedClientScopes()) {
                 ClientScopeModel clientScope = KeycloakModelUtils.getClientScopeByName(newRealm, scopeName);
-                if (clientScope == null) {
+                if (clientScope != null) {
+                    consentModel.addGrantedClientScope(clientScope);
+                } else if (Profile.isFeatureEnabled(Feature.PARAMETERIZED_SCOPES)) {
+                    // check for parameterized scopes
+                    AuthorizationRequestParserProvider clientScopeParser = session.getProvider(
+                            AuthorizationRequestParserProvider.class, "client-scope");
+                    if (clientScopeParser == null) {
+                        throw new RuntimeException("No provider found for authorization requests parser client-scope");
+                    }
+
+                    AuthorizationRequestContext ctx = clientScopeParser.parseScopes(client, scopeName);
+                    AuthorizationDetails authDetails = ctx.getAuthorizationDetailEntries().stream()
+                            .filter(a -> a.getAuthorizationDetails().getParameterizedScopeParamFromCustomData() != null)
+                            .findAny().orElse(null);
+                    if (authDetails == null) {
+                        throw new RuntimeException("Unable to find client scope referenced in consent mappings of user. Client scope name: " + scopeName);
+                    }
+
+                    consentModel.addGrantedClientScope(authDetails.getClientScope(), authDetails.getAuthorizationDetails().getParameterizedScopeParamFromCustomData());
+                } else {
                     throw new RuntimeException("Unable to find client scope referenced in consent mappings of user. Client scope name: " + scopeName);
                 }
-                consentModel.addGrantedClientScope(clientScope);
             }
         }
 
@@ -976,6 +1023,15 @@ public class RepresentationToModel {
         }
 
         return consentModel;
+    }
+
+    public static UserVerifiableCredentialModel toModel(UserVerifiableCredentialRepresentation rep) {
+        UserVerifiableCredentialModel verifCredentialModel = new UserVerifiableCredentialModel(rep.getCredentialScopeName());
+        verifCredentialModel.setRevision(rep.getRevision());
+        verifCredentialModel.setCreatedDate(rep.getCreatedDate());
+        verifCredentialModel.setUpdatedDate(rep.getUpdatedDate());
+        verifCredentialModel.setUserAttributes(rep.getUserAttributes());
+        return verifCredentialModel;
     }
 
     public static AuthenticationFlowModel toModel(AuthenticationFlowRepresentation rep) {
@@ -1452,7 +1508,7 @@ public class RepresentationToModel {
         }
 
         resourceIds = resourceIds.stream().map(id -> {
-            Resource resource = AdminPermissionsSchema.SCHEMA.getOrCreateResource(session, resourceServer, policy.getType(), policy.getResourceType(), id);
+            Resource resource = AdminPermissionsSchema.SCHEMA.getOrCreateResource(session, resourceServer, policy.getResourceType(), id);
 
             if (resource == null) {
                 return id;
@@ -1739,7 +1795,6 @@ public class RepresentationToModel {
         model.setAttributes(rep.getAttributes());
         model.setDomains(ofNullable(rep.getDomains()).orElse(Set.of()).stream()
                 .filter(Objects::nonNull)
-                .filter(domain -> StringUtil.isNotBlank(domain.getName()))
                 .map(RepresentationToModel::toModel)
                 .collect(Collectors.toSet()));
 
@@ -1748,5 +1803,17 @@ public class RepresentationToModel {
 
     public static OrganizationDomainModel toModel(OrganizationDomainRepresentation domainRepresentation) {
         return new OrganizationDomainModel(domainRepresentation.getName(), domainRepresentation.isVerified());
+    }
+
+    public static IssuedVerifiableCredentialModel toModel(IssuedVerifiableCredentialRepresentation representation) {
+        IssuedVerifiableCredentialModel model = new IssuedVerifiableCredentialModel();
+        model.setId(representation.getId());
+        model.setUserId(representation.getUserId());
+        model.setCredentialType(representation.getCredentialType());
+        model.setIssuedAt(representation.getIssuedAt());
+        model.setExpiresAt(representation.getExpiresAt());
+        model.setClientId(representation.getClientId());
+        model.setRevision(representation.getRevision());
+        return model;
     }
 }

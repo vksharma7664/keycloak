@@ -1,0 +1,577 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "iVALT Cloud API",
+    "description": "iVALT biometric push-authentication and KeyClockIDP admin API for geofence and time window management.\n\nAuthentication is via `x-api-key` header on all requests.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.ivalt.com",
+      "description": "Production iVALT Cloud API"
+    }
+  ],
+  "paths": {
+    "/send/global/notification": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Send push notification",
+        "description": "Sends a biometric authentication push notification to the specified mobile number via the iVALT mobile app. Returns immediately; status must be polled via `/validate-geo-fence-auth`.",
+        "operationId": "sendNotification",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SendNotificationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Notification sent successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validate-geo-fence-auth": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Check authentication status",
+        "description": "Polls the status of a previously sent push notification. Returns 200 when APPROVED, or throws an error for REJECTED/PENDING/timezone/geofence violations.",
+        "operationId": "validateAuth",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SendNotificationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication approved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Pending, rejected, or geofence/timezone violation",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/keyclock/organization/{orgCode}/geo-fences": {
+      "get": {
+        "tags": ["Geofences"],
+        "summary": "List geofences for an organization",
+        "operationId": "getGeofences",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/OrgCode" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/SortBy" },
+          { "$ref": "#/components/parameters/SortOrder" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of geofences",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/keyclock/organization/{orgCode}/create/geo-fence": {
+      "post": {
+        "tags": ["Geofences"],
+        "summary": "Create a geofence",
+        "operationId": "createGeofence",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/OrgCode" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GeofenceCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Geofence created" },
+          "201": { "description": "Geofence created" }
+        }
+      }
+    },
+    "/keyclock/organization/{orgCode}/update/geo-fence/{geofenceId}": {
+      "put": {
+        "tags": ["Geofences"],
+        "summary": "Update a geofence",
+        "operationId": "updateGeofence",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/OrgCode" },
+          { "$ref": "#/components/parameters/GeofenceId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GeofenceUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Geofence updated" }
+        }
+      }
+    },
+    "/keyclock/organization/{orgCode}/delete/geo-fence/{geofenceId}": {
+      "delete": {
+        "tags": ["Geofences"],
+        "summary": "Delete a geofence",
+        "operationId": "deleteGeofence",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/OrgCode" },
+          { "$ref": "#/components/parameters/GeofenceId" }
+        ],
+        "responses": {
+          "200": { "description": "Geofence deleted" },
+          "204": { "description": "Geofence deleted (no content)" }
+        }
+      }
+    },
+    "/keyclock/user/{userMobile}/geofences": {
+      "get": {
+        "tags": ["User Geofence Assignments"],
+        "summary": "Get user's assigned geofences",
+        "operationId": "getUserGeofences",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/UserMobile" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/SortBy" },
+          { "$ref": "#/components/parameters/SortOrder" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of assigned geofences",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/keyclock/user/{userMobile}/geofences/update": {
+      "put": {
+        "tags": ["User Geofence Assignments"],
+        "summary": "Update user geofence assignments",
+        "description": "Replaces the complete set of geofence IDs assigned to the user.",
+        "operationId": "updateUserGeofences",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/UserMobile" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GeofenceAssignRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Assignments updated" }
+        }
+      }
+    },
+    "/keyclock/organization/{orgCode}/timeslots": {
+      "get": {
+        "tags": ["Time Windows"],
+        "summary": "List timeslots for an organization",
+        "operationId": "getTimeslots",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/OrgCode" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/SortBy" },
+          { "$ref": "#/components/parameters/SortOrder" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of timeslots",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/keyclock/organization/{orgCode}/timeslots/add": {
+      "post": {
+        "tags": ["Time Windows"],
+        "summary": "Create a timeslot",
+        "operationId": "createTimeslot",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/OrgCode" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TimeWindowCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Timeslot created" },
+          "201": { "description": "Timeslot created" }
+        }
+      }
+    },
+    "/keyclock/timeslot/{timeslotId}/update": {
+      "put": {
+        "tags": ["Time Windows"],
+        "summary": "Update a timeslot",
+        "operationId": "updateTimeslot",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TimeslotId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TimeWindowUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Timeslot updated" }
+        }
+      }
+    },
+    "/keyclock/timeslot/{timeslotId}/delete": {
+      "delete": {
+        "tags": ["Time Windows"],
+        "summary": "Delete a timeslot",
+        "operationId": "deleteTimeslot",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TimeslotId" }
+        ],
+        "responses": {
+          "200": { "description": "Timeslot deleted" },
+          "204": { "description": "Timeslot deleted (no content)" }
+        }
+      }
+    },
+    "/keyclock/user/{userMobile}/timeslots": {
+      "get": {
+        "tags": ["User Time Window Assignments"],
+        "summary": "Get user's assigned timeslots",
+        "operationId": "getUserTimeslots",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/UserMobile" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/SortBy" },
+          { "$ref": "#/components/parameters/SortOrder" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of assigned timeslots",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IvaltApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/keyclock/user/{userMobile}/timeslots/update": {
+      "put": {
+        "tags": ["User Time Window Assignments"],
+        "summary": "Update user timeslot assignments",
+        "description": "Replaces the complete set of timeslot IDs assigned to the user.",
+        "operationId": "updateUserTimeslots",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/UserMobile" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TimeWindowAssignRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Assignments updated" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "iVALT API key provided by iVALT"
+      }
+    },
+    "parameters": {
+      "OrgCode": {
+        "name": "orgCode",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Organization code (URL-encoded)"
+      },
+      "UserMobile": {
+        "name": "userMobile",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "User mobile number in E.164 format (URL-encoded, e.g. +919876543210)"
+      },
+      "GeofenceId": {
+        "name": "geofenceId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "description": "Geofence ID"
+      },
+      "TimeslotId": {
+        "name": "timeslotId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "description": "Timeslot ID"
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "integer", "default": 1 },
+        "description": "Page number (1-based)"
+      },
+      "PerPage": {
+        "name": "per_page",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "integer", "default": 10 },
+        "description": "Items per page"
+      },
+      "SortBy": {
+        "name": "sort_by",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "string", "default": "created_at" },
+        "description": "Sort column name"
+      },
+      "SortOrder": {
+        "name": "sort_order",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "string", "default": "desc", "enum": ["asc", "desc"] },
+        "description": "Sort order"
+      }
+    },
+    "schemas": {
+      "SendNotificationRequest": {
+        "type": "object",
+        "required": ["mobile"],
+        "properties": {
+          "mobile": {
+            "type": "string",
+            "description": "Full mobile number with country code (E.164)",
+            "example": "+919876543210"
+          }
+        }
+      },
+      "IvaltApiResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "boolean" },
+              "message": { "type": "string" },
+              "details": {}
+            }
+          },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+          "error": {
+            "type": "object",
+            "properties": {
+              "detail": { "type": "string" },
+              "title": { "type": "string" }
+            }
+          },
+          "debug": {}
+        }
+      },
+      "IvaltApiErrorResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "null" },
+          "error": {
+            "type": "object",
+            "properties": {
+              "detail": { "type": "string" },
+              "title": { "type": "string" }
+            }
+          }
+        }
+      },
+      "Geofence": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "organization_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "radius": { "type": "number", "format": "double", "description": "Radius in meters" },
+          "is_active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "GeofenceCreateRequest": {
+        "type": "object",
+        "required": ["name", "latitude", "longitude", "radius"],
+        "properties": {
+          "name": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "radius": { "type": "number", "format": "double", "description": "Radius in meters" },
+          "is_active": { "type": "boolean", "default": true }
+        }
+      },
+      "GeofenceUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "radius": { "type": "number", "format": "double" },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "GeofenceAssignRequest": {
+        "type": "object",
+        "required": ["orgGeoFence_ids"],
+        "properties": {
+          "orgGeoFence_ids": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Complete list of geofence IDs to assign to the user"
+          }
+        }
+      },
+      "TimeWindow": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "organization_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "start_time": { "type": "string", "description": "Time window start (e.g. 09:00)" },
+          "end_time": { "type": "string", "description": "Time window end (e.g. 17:00)" },
+          "timezone": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Allowed timezone(s)"
+          },
+          "status": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TimeWindowCreateRequest": {
+        "type": "object",
+        "required": ["timezone", "start_time", "end_time", "status"],
+        "properties": {
+          "timezone": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "e.g. [\"Asia/Kolkata\"]"
+          },
+          "start_time": { "type": "string", "example": "09:00" },
+          "end_time": { "type": "string", "example": "17:00" },
+          "status": { "type": "boolean", "default": true }
+        }
+      },
+      "TimeWindowUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "timezone": { "type": "array", "items": { "type": "string" } },
+          "start_time": { "type": "string" },
+          "end_time": { "type": "string" },
+          "status": { "type": "boolean" }
+        }
+      },
+      "TimeWindowAssignRequest": {
+        "type": "object",
+        "required": ["timeslot_ids"],
+        "properties": {
+          "timeslot_ids": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Complete list of timeslot IDs to assign to the user"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "current_page": { "type": "integer" },
+          "per_page": { "type": "integer" },
+          "total": { "type": "integer" },
+          "last_page": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

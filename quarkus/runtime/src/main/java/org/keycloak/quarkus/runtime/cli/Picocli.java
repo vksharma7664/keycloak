@@ -50,7 +50,6 @@ import org.keycloak.quarkus.runtime.cli.command.Tools;
 import org.keycloak.quarkus.runtime.cli.command.WindowsService;
 import org.keycloak.quarkus.runtime.configuration.ConfigArgsConfigSource;
 import org.keycloak.quarkus.runtime.configuration.Configuration;
-import org.keycloak.quarkus.runtime.configuration.DisabledMappersInterceptor;
 import org.keycloak.quarkus.runtime.configuration.KcUnmatchedArgumentException;
 import org.keycloak.quarkus.runtime.configuration.MicroProfileConfigProvider;
 import org.keycloak.quarkus.runtime.configuration.PropertyMappingInterceptor;
@@ -59,7 +58,7 @@ import org.keycloak.quarkus.runtime.configuration.mappers.PropertyMapper;
 import org.keycloak.quarkus.runtime.configuration.mappers.PropertyMappers;
 
 import io.quarkus.bootstrap.runner.QuarkusEntryPoint;
-import io.quarkus.dev.console.QuarkusConsole;
+import io.quarkus.dev.console.TerminalUtils;
 import io.quarkus.runtime.LaunchMode;
 import io.smallrye.config.ConfigValue;
 import io.smallrye.mutiny.tuples.Functions.TriConsumer;
@@ -106,7 +105,7 @@ public class Picocli {
     private Set<String> duplicatedOptionsNames = new HashSet<String>();
 
     public static boolean hasColorSupport() {
-        return QuarkusConsole.hasColorSupport();
+        return TerminalUtils.hasColorSupport();
     }
 
     public Ansi getColorMode() {
@@ -184,7 +183,7 @@ public class Picocli {
             // to reuse the previous result either means we need to duplicate the logic in the execute method
             // or refactor the above logic so that it happens in the command logic
             // We could also reduce the memory footprint of the ParseResult, but that looks a little hackish
-            int exitCode = cmd.execute(argArray);
+            int exitCode = execute(cmd, argArray);
 
             exit(exitCode);
         } catch (ParameterException parEx) {
@@ -192,6 +191,10 @@ public class Picocli {
         } catch (ProfileException | PropertyException proEx) {
             usageException(proEx.getMessage(), proEx.getCause());
         }
+    }
+
+    protected int execute(CommandLine cmd, String[] argArray) {
+        return cmd.execute(argArray);
     }
 
     public Optional<AbstractCommand> getParsedCommand() {
@@ -240,104 +243,102 @@ public class Picocli {
             validateBuildtime();
         }
 
-        final boolean disabledMappersInterceptorEnabled = DisabledMappersInterceptor.isEnabled(); // return to the state before the disable
-        try {
-            DisabledMappersInterceptor.disable(); // we want all properties, even disabled ones
+        final List<String> ignoredRunTime = new ArrayList<>();
+        final Set<String> disabledBuildTime = new LinkedHashSet<>();
+        final Set<String> disabledRunTime = new LinkedHashSet<>();
+        final Set<String> deprecatedInUse = new LinkedHashSet<>();
+        final Set<String> missingOption = new LinkedHashSet<>();
+        final Set<String> ambiguousSpi = new LinkedHashSet<>();
+        final Set<String> unnecessary = new LinkedHashSet<>();
+        final LinkedHashMap<String, String> secondClassOptions = new LinkedHashMap<>();
 
-            final List<String> ignoredRunTime = new ArrayList<>();
-            final Set<String> disabledBuildTime = new LinkedHashSet<>();
-            final Set<String> disabledRunTime = new LinkedHashSet<>();
-            final Set<String> deprecatedInUse = new LinkedHashSet<>();
-            final Set<String> missingOption = new LinkedHashSet<>();
-            final Set<String> ambiguousSpi = new LinkedHashSet<>();
-            final Set<String> unnecessary = new LinkedHashSet<>();
-            final LinkedHashMap<String, String> secondClassOptions = new LinkedHashMap<>();
+        final Set<PropertyMapper<?>> disabledMappers = new HashSet<>();
+        if (options.includeBuildTime) {
+            disabledMappers.addAll(PropertyMappers.getDisabledBuildTimeMappers().values());
+        }
+        if (options.includeRuntime) {
+            disabledMappers.addAll(PropertyMappers.getDisabledRuntimeMappers().values());
+        }
 
-            final Set<PropertyMapper<?>> disabledMappers = new HashSet<>();
-            if (options.includeBuildTime) {
-                disabledMappers.addAll(PropertyMappers.getDisabledBuildTimeMappers().values());
-            }
-            if (options.includeRuntime) {
-                disabledMappers.addAll(PropertyMappers.getDisabledRuntimeMappers().values());
-            }
-
-            // first validate the advertised property names
-            // - this allows for efficient resolution of wildcard values and checking spi options
-            Configuration.getPropertyNames().forEach(name -> {
-                if (!name.startsWith(MicroProfileConfigProvider.NS_KEYCLOAK_PREFIX)) {
-                    return; // there are canonical mappings to kc. values - no need to consider alternative forms
-                }
+        // first validate the advertised property names
+        // - this allows for efficient resolution of wildcard values and checking spi options
+        Configuration.getPropertyNames().forEach(name -> {
+            if (name.startsWith(PropertyMappers.KC_SPI_PREFIX)) {
                 if (!options.includeRuntime) {
                     checkRuntimeSpiOptions(name, ignoredRunTime);
                 }
                 if (PropertyMappers.isMaybeSpiBuildTimeProperty(name)) {
                     ambiguousSpi.add(name);
                 }
-                PropertyMapper<?> mapper = PropertyMappers.getMapper(name);
-                if (mapper == null) {
-                    return; // TODO: need to look for disabled Wildcard mappers
+            }
+            PropertyMapper<?> mapper = PropertyMappers.getMapper(name);
+            if (mapper == null || mapper.getOption().isSynthetic()) {
+                return; // TODO: need to look for disabled Wildcard mappers
+            }
+            var forKey = mapper.forKey(name);
+            if (!name.equals(forKey.getFrom())) {
+                ConfigValue value = getUnmappedValue(name);
+                if (value.getValue() != null && isUserModifiable(value)) {
+                    secondClassOptions.put(name, forKey.getFrom());
                 }
-                var forKey = mapper.forKey(name);
-                if (!name.equals(forKey.getFrom())) {
-                    ConfigValue value = getUnmappedValue(name);
-                    if (value.getValue() != null && isUserModifiable(value)) {
-                        secondClassOptions.put(name, forKey.getFrom());
-                    }
-                }
-                if (!mapper.hasWildcard()) {
-                    return; // non-wildcard options will be validated in the next pass
-                }
+            }
+            if (!mapper.hasWildcard() // non-wildcard options will be validated in the next pass
+                    // validate only canonical mappings to kc. values - no need to consider alternative forms
+                    || !name.startsWith(MicroProfileConfigProvider.NS_KEYCLOAK_PREFIX)) {
+                return;
+            }
+            validateProperty(abstractCommand, options, ignoredRunTime, disabledBuildTime, disabledRunTime,
+                    deprecatedInUse, missingOption, false, forKey, unnecessary);
+        });
+
+        // second pass validate any property mapper not seen in the first pass
+        // - this will catch required values, anything missing from the property names, or disabled
+        for (PropertyMapper<?> mapper : PropertyMappers.getMappers()) {
+            if (!mapper.hasWildcard() && !mapper.getOption().isSynthetic()) {
                 validateProperty(abstractCommand, options, ignoredRunTime, disabledBuildTime, disabledRunTime,
-                        deprecatedInUse, missingOption, disabledMappers.contains(mapper), forKey, unnecessary);
-            });
+                        deprecatedInUse, missingOption, false, mapper, unnecessary);
+            }
+        }
 
-            // second pass validate any property mapper not seen in the first pass
-            // - this will catch required values, anything missing from the property names, or disabled
-            for (PropertyMapper<?> mapper : PropertyMappers.getMappers()) {
-                if (!mapper.hasWildcard()) {
-                    validateProperty(abstractCommand, options, ignoredRunTime, disabledBuildTime, disabledRunTime,
-                            deprecatedInUse, missingOption, disabledMappers.contains(mapper), mapper, unnecessary);
-                }
-            }
+        PropertyMappers.getPropertyMapperGroupings().forEach(g -> g.validateConfig(this));
 
-            PropertyMappers.getPropertyMapperGroupings().forEach(g -> g.validateConfig(this));
+        // third pass check for disabled mappers
+        for (PropertyMapper<?> mapper : disabledMappers) {
+            if (!mapper.hasWildcard() && !mapper.getOption().isSynthetic()) {
+                validateProperty(abstractCommand, options, ignoredRunTime, disabledBuildTime, disabledRunTime,
+                        deprecatedInUse, missingOption, true, mapper, unnecessary);
+            }
+        }
 
-            // third pass check for disabled mappers
-            for (PropertyMapper<?> mapper : disabledMappers) {
-                if (!mapper.hasWildcard()) {
-                    validateProperty(abstractCommand, options, ignoredRunTime, disabledBuildTime, disabledRunTime,
-                            deprecatedInUse, missingOption, disabledMappers.contains(mapper), mapper, unnecessary);
-                }
-            }
+        if (!missingOption.isEmpty()) {
+            throw new PropertyException("The following options are required: \n%s".formatted(String.join("\n", missingOption)));
+        }
+        if (!ignoredRunTime.isEmpty()) {
+            info(format("The following run time options were found, but will be ignored during build time: %s\n",
+                    String.join(", ", ignoredRunTime)));
+        }
 
-            if (!missingOption.isEmpty()) {
-                throw new PropertyException("The following options are required: \n%s".formatted(String.join("\n", missingOption)));
-            }
-            if (!ignoredRunTime.isEmpty()) {
-                info(format("The following run time options were found, but will be ignored during build time: %s\n",
-                        String.join(", ", ignoredRunTime)));
-            }
+        if (!disabledBuildTime.isEmpty()) {
+            outputDisabledProperties(disabledBuildTime, true);
+        } else if (!disabledRunTime.isEmpty()) {
+            outputDisabledProperties(disabledRunTime, false);
+        }
 
-            if (!disabledBuildTime.isEmpty()) {
-                outputDisabledProperties(disabledBuildTime, true);
-            } else if (!disabledRunTime.isEmpty()) {
-                outputDisabledProperties(disabledRunTime, false);
-            }
-
-            if (!deprecatedInUse.isEmpty()) {
-                warn("The following used options or option values are DEPRECATED and will be removed or their behaviour changed in a future release:\n" + String.join("\n", deprecatedInUse) + "\nConsult the Release Notes for details.");
-            }
-            if (!ambiguousSpi.isEmpty()) {
-                warn("The following SPI options are using the legacy format and are not being treated as build time options. Please use the new format with the appropriate -- separators to resolve this ambiguity: " + String.join("\n", ambiguousSpi));
-            }
-            secondClassOptions.forEach((key, firstClass) -> {
+        if (!deprecatedInUse.isEmpty()) {
+            warn("The following used options or option values are DEPRECATED and will be removed or their behaviour changed in a future release:\n" + String.join("\n", deprecatedInUse) + "\nConsult the Release Notes for details.");
+        }
+        if (!ambiguousSpi.isEmpty()) {
+            warn("The following SPI options are using the legacy format and are not being treated as build time options. Please use the new format with the appropriate -- separators to resolve this ambiguity: " + String.join("\n", ambiguousSpi));
+        }
+        secondClassOptions.forEach((key, firstClass) -> {
+            if (Configuration.getConfigValue(firstClass).getConfigSourceName() != null) {
+                warn("With the first-class option `%s` set, you should remove the usage of `%s`".formatted(firstClass, key));
+            } else {
                 warn("Please use the first-class option `%s` instead of `%s`".formatted(firstClass, key));
-            });
-            if (!unnecessary.isEmpty()) {
-                info("The following options were specified, but are typically not relevant for this command: " + String.join("\n", unnecessary));
             }
-        } finally {
-            DisabledMappersInterceptor.enable(disabledMappersInterceptorEnabled);
+        });
+        if (!unnecessary.isEmpty()) {
+            info("The following options were specified, but are typically not relevant for this command: " + String.join("\n", unnecessary));
         }
     }
 
@@ -351,7 +352,7 @@ public class Picocli {
                 if (newValue == null || oldValue == null) {
                     changed = true;
                 } else if (!warnedTimestampChanged && timestampChanged(oldValue, newValue)) {
-                    if (Configuration.getOptionalBooleanKcValue("run-in-container").orElse(false)) {
+                    if (Environment.isRunInContainer()) {
                         warnedTimestampChanged = true;
                         warn(PROVIDER_TIMESTAMP_WARNING);
                     } else {
@@ -440,9 +441,6 @@ public class Picocli {
     }
 
     private static void checkRuntimeSpiOptions(String key, final List<String> ignoredRunTime) {
-        if (!key.startsWith(PropertyMappers.KC_SPI_PREFIX)) {
-            return;
-        }
         boolean buildTimeOption = PropertyMappers.isSpiBuildTimeProperty(key);
 
         if (!buildTimeOption) {
@@ -626,7 +624,7 @@ public class Picocli {
                 }
                 return result;
             }
-        }).name(Environment.getCommand());
+        }).name(getCommandNameForHelp());
         updateSpecHelpAndUnmatched(spec, unrecognizedArgs);
 
         CommandLine cmd = new CommandLine(spec);
@@ -638,6 +636,7 @@ public class Picocli {
         cmd.getHelpSectionMap().put(SECTION_KEY_COMMAND_LIST, new SubCommandListRenderer());
         cmd.setErr(getErrWriter());
         cmd.setOut(getOutWriter());
+        configureUsageHelpWidth(cmd);
 
         removePlatformSpecificCommands(cmd);
 
@@ -669,6 +668,25 @@ public class Picocli {
         // not an official option, just a way for integration tests to produce the same output regardless of OS
         return Optional.ofNullable(System.getenv("KEYCLOAK_COMMAND_MODE")).map(CommandMode::valueOf)
                 .orElse(Environment.isWindows() ? CommandMode.WIN : CommandMode.UNIX);
+    }
+
+    private String getCommandNameForHelp() {
+        // enforce kc.sh for ALL mode to ensure consistent line wrapping
+        return switch (getCommandMode()) {
+        case WIN -> "kc.bat";
+        default -> "kc.sh";
+        };
+    }
+
+    private void configureUsageHelpWidth(CommandLine cmd) {
+        // not an official option, just a way to make help wrapping configurable
+        Optional.ofNullable(System.getenv("KEYCLOAK_HELP_WIDTH"))
+                .map(Integer::parseInt)
+                .filter(width -> width > 0)
+                .ifPresent(width -> {
+                    cmd.setUsageHelpAutoWidth(false);
+                    cmd.setUsageHelpWidth(width);
+                });
     }
 
     public PrintWriter getErrWriter() {
@@ -712,6 +730,9 @@ public class Picocli {
                     .validate(false);
 
             for (PropertyMapper<?> mapper : entry.getValue()) {
+                if (mapper.getOption().isSynthetic()) {
+                    continue;
+                }
                 String name = mapper.getCliFormat();
 
                 boolean hidden = mapper.isHidden() || ac.isHiddenCategory(mapper.getCategory())

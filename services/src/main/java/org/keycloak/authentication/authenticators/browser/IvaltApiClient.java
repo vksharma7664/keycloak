@@ -18,15 +18,9 @@
 package org.keycloak.authentication.authenticators.browser;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -35,15 +29,9 @@ import java.util.Map;
  * 
  * @author iVALT Integration Team
  */
-public class IvaltApiClient {
+public class IvaltApiClient extends AbstractIvaltApiClient {
 
     private static final Logger logger = Logger.getLogger(IvaltApiClient.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final String baseUrl;
-    private final String apiKey;
-    private final int timeout;
-    private final HttpClient httpClient;
 
     public enum NotificationStatus {
         APPROVED,
@@ -55,13 +43,13 @@ public class IvaltApiClient {
     }
 
     public IvaltApiClient(Map<String, String> config) {
-        this.baseUrl = config.getOrDefault(IvaltAuthenticatorFactory.IVALT_API_BASE_URL, "https://api.ivalt.com");
-        this.apiKey = config.get(IvaltAuthenticatorFactory.IVALT_API_KEY);
-        this.timeout = Integer.parseInt(config.getOrDefault(IvaltAuthenticatorFactory.IVALT_API_TIMEOUT, "300000"));
-
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(timeout))
-                .build();
+        super(
+            config,
+            IvaltAuthenticatorFactory.IVALT_API_BASE_URL,
+            IvaltAuthenticatorFactory.IVALT_API_KEY,
+            IvaltAuthenticatorFactory.IVALT_API_TIMEOUT,
+            "https://api.ivalt.com"
+        );
     }
 
     /**
@@ -77,32 +65,18 @@ public class IvaltApiClient {
      */
     public String sendNotification(String mobileNumber, String username, String realm)
             throws IOException, InterruptedException {
-        String url = baseUrl + "/biometric-auth-request";
+        String url = baseUrl + "/send/global/notification";
 
         // Build request payload - API expects only mobile number
         String payload = String.format("{\"mobile\":\"%s\"}", mobileNumber);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", apiKey)
-                .timeout(Duration.ofMillis(timeout))
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build();
-
         logger.infof("Sending iVALT biometric auth request to %s for user %s", mobileNumber, username);
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        JsonNode response = postRequest(url, payload);
 
-        if (response.statusCode() == 200) {
-            logger.infof("iVALT notification sent successfully to %s", mobileNumber);
-            // API doesn't return transaction ID, use mobile number as identifier
-            return mobileNumber;
-        } else {
-            logger.errorf("Failed to send iVALT notification. Status: %d, Response: %s",
-                    response.statusCode(), response.body());
-            throw new IOException("Failed to send notification: HTTP " + response.statusCode());
-        }
+        logger.infof("iVALT notification sent successfully to %s", mobileNumber);
+        // API doesn't return transaction ID, use mobile number as identifier
+        return mobileNumber;
     }
 
     /**
@@ -113,60 +87,43 @@ public class IvaltApiClient {
      * @throws IOException If API call fails
      */
     public NotificationStatus getStatus(String mobileNumber) throws IOException, InterruptedException {
-        String url = baseUrl + "/biometric-geo-fence-auth-results";
+        String url = baseUrl + "/validate-geo-fence-auth";
 
         // Build request payload - API expects mobile number
         String payload = String.format("{\"mobile\":\"%s\"}", mobileNumber);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", apiKey)
-                .timeout(Duration.ofMillis(timeout))
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
-                .build();
-
         logger.debugf("Checking iVALT auth status for mobile %s", mobileNumber);
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        try {
+            JsonNode response = postRequest(url, payload);
 
-        if (response.statusCode() == 200) {
             // Success - authentication approved
             logger.infof("iVALT authentication approved for mobile %s", mobileNumber);
             return NotificationStatus.APPROVED;
-        } else {
+
+        } catch (IOException e) {
             // Parse error response to determine status
-            try {
-                JsonNode jsonResponse = objectMapper.readTree(response.body());
-                JsonNode errorNode = jsonResponse.get("error");
+            // Since postRequest throws on non-200/201 status, we need to parse the error message
+            String errorMessage = e.getMessage();
+            
+            if (errorMessage != null) {
+                String lowerMessage = errorMessage.toLowerCase();
 
-                if (errorNode != null) {
-                    JsonNode detailNode = errorNode.get("detail");
-                    if (detailNode != null) {
-                        String detail = detailNode.asText().toLowerCase();
-
-                        if (detail.contains("timezone")) {
-                            logger.warnf("iVALT authentication failed: Invalid timezone for mobile %s", mobileNumber);
-                            return NotificationStatus.INVALID_TIMEZONE;
-                        }
-
-                        if (detail.contains("geofencing") || detail.contains("geofence")) {
-                            logger.warnf("iVALT authentication failed: Invalid geofence for mobile %s", mobileNumber);
-                            return NotificationStatus.INVALID_GEOFENCE;
-                        }
-                    }
+                if (lowerMessage.contains("timezone")) {
+                    logger.warnf("iVALT authentication failed: Invalid timezone for mobile %s", mobileNumber);
+                    return NotificationStatus.INVALID_TIMEZONE;
                 }
 
-                // Check if it's a pending/waiting state or rejection
-                // If no specific error, assume it's still pending
-                logger.debugf("iVALT authentication pending for mobile %s. Status: %d", mobileNumber,
-                        response.statusCode());
-                return NotificationStatus.PENDING;
-
-            } catch (Exception e) {
-                logger.errorf(e, "Failed to parse iVALT error response for mobile %s", mobileNumber);
-                return NotificationStatus.ERROR;
+                if (lowerMessage.contains("geofencing") || lowerMessage.contains("geofence")) {
+                    logger.warnf("iVALT authentication failed: Invalid geofence for mobile %s", mobileNumber);
+                    return NotificationStatus.INVALID_GEOFENCE;
+                }
             }
+
+            // Check if it's a pending/waiting state or rejection
+            // If no specific error, assume it's still pending
+            logger.debugf("iVALT authentication pending for mobile %s", mobileNumber);
+            return NotificationStatus.PENDING;
         }
     }
 }

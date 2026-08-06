@@ -1,0 +1,550 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Keycloak Admin — iVALT Settings API",
+    "description": "Keycloak admin REST API for iVALT MFA configuration, geofence, and time window management.\n\nThese endpoints are served by the Keycloak server and proxy to the iVALT Cloud API. Authentication is via the admin console bearer token.\n\nBase path: `/admin/realms/{realm}/ivalt-settings/`",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://{keycloak-host}",
+      "description": "Keycloak server",
+      "variables": {
+        "keycloak-host": {
+          "default": "localhost:8080",
+          "description": "Keycloak hostname and port"
+        }
+      }
+    }
+  ],
+  "paths": {
+    "/admin/realms/{realm}/ivalt-settings/config": {
+      "get": {
+        "tags": ["Configuration"],
+        "summary": "Get iVALT configuration",
+        "description": "Returns the iVALT configuration for the realm. The API key value is never returned — only a boolean flag indicating whether one is configured.",
+        "operationId": "getIvaltConfig",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "$ref": "#/components/schemas/IvaltConfig" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Not authorized (requires view-realm)" }
+        }
+      },
+      "put": {
+        "tags": ["Configuration"],
+        "summary": "Update iVALT configuration",
+        "description": "Updates the iVALT configuration for the realm. The API key is only overwritten when a non-empty value is supplied.",
+        "operationId": "updateIvaltConfig",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IvaltConfigUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "$ref": "#/components/schemas/IvaltConfig" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/geofences": {
+      "get": {
+        "tags": ["Geofences"],
+        "summary": "List geofences",
+        "description": "Lists all geofences for the configured organization. Resolves org code from realm attributes server-side.",
+        "operationId": "adminGetGeofences",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of geofences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Geofence" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing iVALT configuration" },
+          "403": { "description": "Not authorized (requires view-realm)" }
+        }
+      },
+      "post": {
+        "tags": ["Geofences"],
+        "summary": "Create a geofence",
+        "operationId": "adminCreateGeofence",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GeofenceCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Geofence created" },
+          "400": { "description": "Missing iVALT configuration" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/geofences/{id}": {
+      "put": {
+        "tags": ["Geofences"],
+        "summary": "Update a geofence",
+        "operationId": "adminUpdateGeofence",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" },
+          { "$ref": "#/components/parameters/GeofenceId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GeofenceUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Geofence updated" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      },
+      "delete": {
+        "tags": ["Geofences"],
+        "summary": "Delete a geofence",
+        "operationId": "adminDeleteGeofence",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" },
+          { "$ref": "#/components/parameters/GeofenceId" }
+        ],
+        "responses": {
+          "200": { "description": "Geofence deleted" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/geofences/assigned": {
+      "get": {
+        "tags": ["User Geofence Assignments"],
+        "summary": "Get assigned geofences",
+        "description": "Returns geofences assigned to the configured user mobile. Resolves user mobile from realm attributes server-side.",
+        "operationId": "adminGetUserGeofences",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assigned geofences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Geofence" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing user mobile configuration" },
+          "403": { "description": "Not authorized (requires view-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/geofences/assign": {
+      "put": {
+        "tags": ["User Geofence Assignments"],
+        "summary": "Update geofence assignments",
+        "description": "Replaces the complete set of geofence IDs assigned to the configured user mobile.",
+        "operationId": "adminUpdateUserGeofences",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GeofenceAssignRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Assignments updated" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/timewindows": {
+      "get": {
+        "tags": ["Time Windows"],
+        "summary": "List time windows",
+        "description": "Lists all timeslots for the configured organization. Resolves org code from realm attributes server-side.",
+        "operationId": "adminGetTimeslots",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of timeslots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TimeWindow" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing iVALT configuration" },
+          "403": { "description": "Not authorized (requires view-realm)" }
+        }
+      },
+      "post": {
+        "tags": ["Time Windows"],
+        "summary": "Create a time window",
+        "operationId": "adminCreateTimeslot",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TimeWindowCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Timeslot created" },
+          "400": { "description": "Missing iVALT configuration" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/timewindows/{id}": {
+      "put": {
+        "tags": ["Time Windows"],
+        "summary": "Update a time window",
+        "operationId": "adminUpdateTimeslot",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" },
+          { "$ref": "#/components/parameters/TimeslotId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TimeWindowUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Timeslot updated" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      },
+      "delete": {
+        "tags": ["Time Windows"],
+        "summary": "Delete a time window",
+        "operationId": "adminDeleteTimeslot",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" },
+          { "$ref": "#/components/parameters/TimeslotId" }
+        ],
+        "responses": {
+          "200": { "description": "Timeslot deleted" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/timewindows/assigned": {
+      "get": {
+        "tags": ["User Time Window Assignments"],
+        "summary": "Get assigned time windows",
+        "description": "Returns timeslots assigned to the configured user mobile. Resolves user mobile from realm attributes server-side.",
+        "operationId": "adminGetUserTimeslots",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assigned timeslots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TimeWindow" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing user mobile configuration" },
+          "403": { "description": "Not authorized (requires view-realm)" }
+        }
+      }
+    },
+    "/admin/realms/{realm}/ivalt-settings/timewindows/assign": {
+      "put": {
+        "tags": ["User Time Window Assignments"],
+        "summary": "Update time window assignments",
+        "description": "Replaces the complete set of timeslot IDs assigned to the configured user mobile.",
+        "operationId": "adminUpdateUserTimeslots",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/Realm" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TimeWindowAssignRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Assignments updated" },
+          "403": { "description": "Not authorized (requires manage-realm)" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Keycloak admin bearer token (obtained via admin console session)"
+      }
+    },
+    "parameters": {
+      "Realm": {
+        "name": "realm",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Keycloak realm name"
+      },
+      "GeofenceId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "description": "Geofence ID"
+      },
+      "TimeslotId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "description": "Timeslot ID"
+      }
+    },
+    "schemas": {
+      "IvaltConfig": {
+        "type": "object",
+        "properties": {
+          "orgCode": { "type": "string", "description": "Organization code" },
+          "userMobile": { "type": "string", "description": "User mobile number (E.164)" },
+          "apiBaseUrl": { "type": "string", "description": "iVALT API base URL" },
+          "apiKeyConfigured": { "type": "boolean", "description": "Whether an API key has been configured (value never returned)" }
+        }
+      },
+      "IvaltConfigUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "orgCode": { "type": "string" },
+          "userMobile": { "type": "string" },
+          "apiBaseUrl": { "type": "string" },
+          "apiKey": { "type": "string", "description": "Only overwritten when non-empty" }
+        }
+      },
+      "Geofence": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "organization_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "radius": { "type": "number", "format": "double", "description": "Radius in meters" },
+          "is_active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "GeofenceCreateRequest": {
+        "type": "object",
+        "required": ["name", "latitude", "longitude", "radius"],
+        "properties": {
+          "name": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "radius": { "type": "number", "format": "double", "description": "Radius in meters" },
+          "is_active": { "type": "boolean", "default": true }
+        }
+      },
+      "GeofenceUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "radius": { "type": "number", "format": "double" },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "GeofenceAssignRequest": {
+        "type": "object",
+        "required": ["orgGeoFence_ids"],
+        "properties": {
+          "orgGeoFence_ids": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Complete list of geofence IDs to assign"
+          }
+        }
+      },
+      "TimeWindow": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "organization_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "start_time": { "type": "string", "description": "Time window start (e.g. 09:00)" },
+          "end_time": { "type": "string", "description": "Time window end (e.g. 17:00)" },
+          "timezone": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Allowed timezone(s)"
+          },
+          "status": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TimeWindowCreateRequest": {
+        "type": "object",
+        "required": ["timezone", "start_time", "end_time", "status"],
+        "properties": {
+          "timezone": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "e.g. [\"Asia/Kolkata\"]"
+          },
+          "start_time": { "type": "string", "example": "09:00" },
+          "end_time": { "type": "string", "example": "17:00" },
+          "status": { "type": "boolean", "default": true }
+        }
+      },
+      "TimeWindowUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "timezone": { "type": "array", "items": { "type": "string" } },
+          "start_time": { "type": "string" },
+          "end_time": { "type": "string" },
+          "status": { "type": "boolean" }
+        }
+      },
+      "TimeWindowAssignRequest": {
+        "type": "object",
+        "required": ["timeslot_ids"],
+        "properties": {
+          "timeslot_ids": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Complete list of timeslot IDs to assign"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "current_page": { "type": "integer" },
+          "per_page": { "type": "integer" },
+          "total": { "type": "integer" },
+          "last_page": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

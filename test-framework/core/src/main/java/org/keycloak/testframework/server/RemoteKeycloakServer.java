@@ -10,15 +10,19 @@ import javax.net.ssl.SSLException;
 import org.keycloak.it.utils.Maven;
 import org.keycloak.testframework.config.Config;
 
-import io.quarkus.maven.dependency.Dependency;
-
 import static java.lang.System.out;
 
 public class RemoteKeycloakServer implements KeycloakServer {
 
+    private final long startTimeout;
+
     private boolean tlsEnabled = false;
 
     private String kcwCommand;
+
+    public RemoteKeycloakServer(long startTimeout) {
+        this.startTimeout = startTimeout;
+    }
 
     @Override
     public void start(KeycloakServerConfigBuilder keycloakServerConfigBuilder, boolean tlsEnabled) {
@@ -32,6 +36,7 @@ public class RemoteKeycloakServer implements KeycloakServer {
             }
             waitForStartup();
         }
+        ReadinessProbe.waitUntilReady(this, startTimeout);
     }
 
     @Override
@@ -62,10 +67,10 @@ public class RemoteKeycloakServer implements KeycloakServer {
         out.println(String.join(" \\\n", config.toArgs()));
         out.println();
 
-        Set<Dependency> dependencies = config.toDependencies();
+        Set<KeycloakDependency> dependencies = config.toDependencies();
         if (!dependencies.isEmpty()) {
             out.println("Requested providers:");
-            for (Dependency d : dependencies) {
+            for (KeycloakDependency d : dependencies) {
                 out.println("* " + d.getGroupId() + ":" + d.getArtifactId());
             }
             out.println();
@@ -76,7 +81,7 @@ public class RemoteKeycloakServer implements KeycloakServer {
         out.println("Remote Keycloak server is not running on " + getBaseUrl() + ", please start Keycloak with:");
         out.println();
 
-        Set<Dependency> dependencies = config.toDependencies();
+        Set<KeycloakDependency> dependencies = config.toDependencies();
         if (!dependencies.isEmpty()) {
             String dependencyPaths = dependencies.stream().map(d -> Maven.resolveArtifact(d.getGroupId(), d.getArtifactId()).toString()).collect(Collectors.joining(","));
             out.println("KCW_PROVIDERS=" + dependencyPaths + " \\");

@@ -8,8 +8,8 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jakarta.validation.ValidationException;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
@@ -20,14 +20,12 @@ import org.keycloak.OAuthErrorException;
 import org.keycloak.forms.login.MessageType;
 import org.keycloak.forms.login.freemarker.model.UrlBean;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakSessionTaskWithResult;
 import org.keycloak.models.KeycloakTransaction;
 import org.keycloak.models.ModelDuplicateException;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.ModelIllegalStateException;
 import org.keycloak.models.ModelValidationException;
 import org.keycloak.models.RealmModel;
-import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.representations.idm.OAuth2ErrorRepresentation;
 import org.keycloak.services.managers.RealmManager;
 import org.keycloak.services.messages.Messages;
@@ -37,15 +35,12 @@ import org.keycloak.theme.beans.LocaleBean;
 import org.keycloak.theme.beans.MessageBean;
 import org.keycloak.theme.beans.MessageFormatterMethod;
 import org.keycloak.theme.freemarker.FreeMarkerProvider;
-import org.keycloak.utils.KeycloakSessionUtil;
 import org.keycloak.utils.MediaType;
 import org.keycloak.utils.MediaTypeMatcher;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jboss.logging.Logger;
-
-import static org.keycloak.services.resources.KeycloakApplication.getSessionFactory;
 
 @Provider
 public class KeycloakErrorHandler implements ExceptionMapper<Throwable> {
@@ -57,21 +52,11 @@ public class KeycloakErrorHandler implements ExceptionMapper<Throwable> {
     public static final String UNCAUGHT_SERVER_ERROR_TEXT = "Uncaught server error";
     public static final String ERROR_RESPONSE_TEXT = "Error response {0}";
 
+    @Context
+    KeycloakSession session;
+
     @Override
     public Response toResponse(Throwable throwable) {
-        KeycloakSession session = KeycloakSessionUtil.getKeycloakSession();
-
-        if (session == null) {
-            // errors might be thrown when handling errors from JAX-RS before the session is available
-            return KeycloakModelUtils.runJobInTransactionWithResult(getSessionFactory(),
-                    new KeycloakSessionTaskWithResult<Response>() {
-                        @Override
-                        public Response run(KeycloakSession session) {
-                            return getResponse(session, throwable);
-                        }
-                    });
-        }
-
         return getResponse(session, throwable);
     }
 
@@ -102,8 +87,6 @@ public class KeycloakErrorHandler implements ExceptionMapper<Throwable> {
                 error.setErrorDescription("Cannot parse the JSON");
             } else if (isServerError) {
                 error.setErrorDescription("For more on this error consult the server log.");
-            } else if (throwable instanceof ValidationException) {
-                error.setErrorDescription(throwable.getMessage());
             }
 
             return Response.status(responseStatus)
